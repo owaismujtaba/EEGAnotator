@@ -2,6 +2,11 @@ from src.audio import AUDIO
 from src.eeg import EEG
 import numpy as np
 
+
+def load_xdf_edf_data(xdf_file, edf_file):
+    data = DATA(xdf_file, edf_file)
+    return data
+
 class DATA:
     def __init__(self, filepath_xdf, filepath_edf) -> None:
         """
