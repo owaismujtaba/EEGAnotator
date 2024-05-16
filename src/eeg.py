@@ -2,12 +2,8 @@ import mne
 import config
 import pdb
 import numpy as np
-from datetime import datetime, timedelta
-
-def load_edf_file(filepath):
-    print('Loading .edf file')
-    streams = mne.io.read_raw_edf(filepath)
-    return streams
+from datetime import  timedelta
+from src.utils import load_edf_file
 
 def check_interruptions(raw_data, sfreq):
     print('Checking for Interruptions')
@@ -33,24 +29,46 @@ def check_interruptions(raw_data, sfreq):
 
 class EEG:
     def __init__(self, filepath_edf) -> None:
+        """
+            Initialize an instance of the EEG class.
+
+            Parameters:
+            - filepath_edf (str): The filepath to the EDF (European Data Format) file.
+
+            Attributes:
+            - filepath (str): The filepath to the EDF file.
+            - raw_data (object): Loaded EDF raw data object.
+            - n_channels (int): Number of EEG channels.
+            - channel_names (list): Names of EEG channels.
+            - sampling_frequency (float): Sampling frequency of the EEG data.
+            - triggers (array): Array containing trigger data.
+            - interruptions_check (bool): Flag indicating if interruptions are present.
+            - interruptions (object): Object containing information about interruptions.
+            - start_time (datetime): Start time of the EEG recording.
+            - duration (float): Duration of the EEG recording in seconds.
+            - end_time (datetime): End time of the EEG recording.
+
+            Helper Functions:
+            - check_interruptions(): Helper function to check for interruptions in EEG data.
+        """
         self.filepath = filepath_edf 
         self.raw_data = load_edf_file(filepath_edf)
         self.n_channels = self.raw_data.info['nchan']
         self.channel_names = self.raw_data.ch_names
         self.sampling_frequency = self.raw_data.info['sfreq']
-        self.triggers = self.raw_data['TRIG'][0][0] #
-        #self.trigger_types = 
+        self.triggers = self.raw_data['TRIG'][0][0] # Assuming 'TRIG' is the trigger channel
         self.interruptions_check = False
         self.interruptions = None
         self.start_time = self.raw_data.info['meas_date']
-        self.duration = self.raw_data.n_times/self.sampling_frequency
+        self.duration = self.raw_data.n_times / self.sampling_frequency
         self.end_time = self.start_time + timedelta(seconds=self.duration)
 
-
+        # Check for interruptions in the EEG data
         self.interruptions, self.interruptions_check = check_interruptions(
             self.raw_data,
             self.sampling_frequency
         )
+
 
     def print_info(self):
         print('***************************EEG File Info***************************')

@@ -2,25 +2,34 @@ from src.audio import AUDIO
 from src.eeg import EEG
 import numpy as np
 
-def convert_unix_timestamps_to_datetime(timestamps):
-    """
-    Convert Unix timestamps to datetime objects using NumPy vectorized operations.
-    
-    Parameters:
-        timestamps (array_like): Array of Unix timestamps.
-    
-    Returns:
-        datetime_objects (array): Array of corresponding datetime objects.
-    """
-    # Convert Unix timestamps to datetime objects
-    datetime_objects = np.datetime64('1970-01-01T00:00:00Z') + np.array(timestamps, dtype='timedelta64[s]')
-    
-    return datetime_objects
-
 class DATA:
     def __init__(self, filepath_xdf, filepath_edf) -> None:
+        """
+            Initialize an instance of the DATA class.
+
+            Parameters:
+            - filepath_xdf (str): The filepath to the XDF (Extensible Data Format) file.
+            - filepath_edf (str): The filepath to the EDF (European Data Format) file.
+
+            Attributes:
+            - filepath_xdf (str): The filepath to the XDF file.
+            - filepath_edf (str): The filepath to the EDF file.
+            - eeg_streams (object): EEG data streams object initialized with the EDF file.
+            - audio_streams (object): Audio data streams object initialized with the XDF file.
+
+            Helper Classes:
+            - EEG: Helper class for handling EEG data.
+            - AUDIO: Helper class for handling audio data.
+        """
         self.filepath_xdf = filepath_xdf
         self.filepath_edf = filepath_edf
-        #self.eeg_streams = EEG(self.filepath_edf)
-        #self.eeg_streams.print_info()
+
+        # Initialize EEG data streams and print info
+        self.eeg_streams = EEG(self.filepath_edf)
+
+        # Initialize audio data streams and print info
         self.audio_streams = AUDIO(self.filepath_xdf) 
+        
+    def print_info(self):
+        self.eeg_streams.print_info()
+        self.audio_streams.print_info()
