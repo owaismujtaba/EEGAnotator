@@ -1,7 +1,7 @@
 from src.audio import AUDIO
 from src.eeg import EEG
 import numpy as np
-
+import pdb
 
 def load_xdf_edf_data(xdf_file, edf_file):
     data = DATA(xdf_file, edf_file)
@@ -33,8 +33,13 @@ class DATA:
         self.eeg_streams = EEG(self.filepath_edf)
 
         # Initialize audio data streams and print info
-        self.audio_streams = AUDIO(self.filepath_xdf) 
+        self.audio_streams = AUDIO(self.filepath_xdf)
+
+        #self.remove_gaps_by_markers_in_audio()
         
     def print_info(self):
         self.eeg_streams.print_info()
         self.audio_streams.print_info()
+
+    def remove_gaps_by_markers_in_audio(self):
+        pass

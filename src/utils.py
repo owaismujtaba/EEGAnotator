@@ -1,6 +1,22 @@
 import numpy as np
 import pyxdf
 import mne
+import numpy as np
+import config
+
+
+def calculate_time_gaps(time_array, time_interval):
+
+    differences = np.diff(time_array).astype('int')
+    indices = np.where(differences > time_interval)[0]
+
+    time_gaps = differences[indices]
+    corresponding_items = time_array[1:][indices]
+
+    return time_gaps, corresponding_items
+
+
+
 
 def convert_unix_timestamps_to_datetime(timestamps):
     """
@@ -37,6 +53,7 @@ def load_xdf_file(filepath):
     
     # Use pyxdf library to load data from the XDF file
     streams, header = pyxdf.load_xdf(filepath)
+    print('*******************************Completed*******************************')
 
     return streams, header
 
@@ -59,6 +76,7 @@ def load_edf_file(filepath):
     
     # Use mne library to read the raw EEG data from the EDF file
     streams = mne.io.read_raw_edf(filepath)
-    
+    print('*******************************Completed*******************************')
+
     return streams
 

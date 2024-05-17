@@ -11,7 +11,7 @@ def check_interruptions(raw_data, sfreq):
     interruptions_check = True
     
     time_diff = np.diff(times)
-    interruptions_indices = np.where(time_diff > (1 / sfreq) * config.INTERRUPTION_INTERVAL)[0]
+    interruptions_indices = np.where(time_diff > (1 / sfreq) * config.INTERRUPTION_INTERVAL_EEG)[0]
 
     if len(interruptions_indices) == 0:
         print("No interruptions detected.")
@@ -74,7 +74,7 @@ class EEG:
         print('***************************EEG File Info***************************')
 
         print("Filepath:", self.filepath)
-        print("Start Time: {}, End Time:{}".format(
+        print("EEG ::: Start Time: {}, End Time:{}".format(
             self.start_time, 
             self.end_time)
         )
