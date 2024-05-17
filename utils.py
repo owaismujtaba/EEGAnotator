@@ -14,7 +14,9 @@ class DATA:
 
             Parameters:
             - filepath_xdf (str): The filepath to the XDF (Extensible Data Format) file.
-            - filepath_edf (str): The filepath to the EDF (European Data Format) file.
+            - filepath_edf (str): 
+            
+            The filepath to the EDF (European Data Format) file.
 
             Attributes:
             - filepath_xdf (str): The filepath to the XDF file.

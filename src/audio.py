@@ -1,4 +1,3 @@
-import pyxdf
 import pdb
 from src.utils import convert_unix_timestamps_to_datetime
 from src.utils import load_xdf_file, calculate_time_gaps
@@ -61,6 +60,8 @@ class AUDIO:
         )
         
         self.n_gaps = len(self.marker_time_gaps)
+
+        #pdb.set_trace()
 
 
     def print_info(self):
