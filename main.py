@@ -7,5 +7,8 @@ edf_path = config.EEG_FILE_PATH
 
 
 
-data = DATA(filepath_xdf=xdf_path, filepath_edf=edf_path)
-data.print_info()
+#data = DATA(filepath_xdf=xdf_path, filepath_edf=edf_path)
+#data.print_info()
+
+
+
