@@ -5,6 +5,65 @@ import numpy as np
 import config
 
 
+def check_audio_markers(markers):
+    """
+        This function checks if the sequences of audio markers follow the correct order.
+        Each marker is expected to be a tuple where the first element is a string in the format 'Action:Word'.
+        The correct sequence for each word should be:
+        StartReading -> EndReading -> StartSaying -> EndSaying
+        
+        Parameters:
+            markers (list of Lists): A list of audio markers.
+
+        Returns:
+            tuple: A boolean indicating if all sequences are complete, and a list of lists with indices of incomplete sequences.
+    """
+
+    print('Checking Audio Markers')
+    current_state = 'START'  
+    incomplete_indices = [] 
+    temp_wrong_indices = []  
+
+    prev_word = None  
+    word = None  
+
+    for i, marker in enumerate(markers):
+        event = marker[0].split(':')
+        if len(event) != 2:
+            continue  
+
+        action, word = event
+        prev_word = prev_word if prev_word is not None else word
+
+        if word != prev_word and current_state != 'START':
+            incomplete_indices.append(temp_wrong_indices.copy())
+            temp_wrong_indices.clear()
+            current_state = 'START'
+
+        temp_wrong_indices.append(i)  
+
+        # State transitions based on the action and current state
+        if current_state == 'START' and action == 'StartReading':
+            current_state = 'StartReading'
+        elif current_state == 'StartReading' and action == 'EndReading':
+            current_state = 'EndReading'
+        elif current_state == 'EndReading' and action == 'StartSaying':
+            current_state = 'StartSaying'
+        elif current_state == 'StartSaying' and action == 'EndSaying':
+            current_state = 'START'
+            temp_wrong_indices.clear()  
+        else:
+            incomplete_indices.append(temp_wrong_indices.copy())
+            temp_wrong_indices.clear()
+            current_state = 'START'
+
+        prev_word = word  
+
+    result = len(incomplete_indices) == 0  
+
+    return result, incomplete_indices
+
+
 def calculate_time_gaps(time_array, time_interval):
 
     differences = np.diff(time_array).astype('int')
