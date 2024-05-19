@@ -51,6 +51,7 @@ class EEG:
             Helper Functions:
             - check_interruptions(): Helper function to check for interruptions in EEG data.
         """
+        print(filepath_edf)
         self.filepath = filepath_edf 
         self.raw_data = load_edf_file(filepath_edf)
         self.n_channels = self.raw_data.info['nchan']
