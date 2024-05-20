@@ -128,13 +128,21 @@ class MainWindow(QMainWindow):
         self.eeg_info_layout_1.addWidget(self.eeg_interrputions)
         self.eeg_info_layout_1.addWidget(self.eeg_n_interruptions)
 
-        #Empty space
-        empty_space_layout = QHBoxLayout()
-        empty_space_widget = self.wrap_layout_in_widget(empty_space_layout)
-        empty_space_widget.setStyleSheet("border: 0px solid black;")
-        empty_label = QLabel()
-        empty_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Set size policy
-        empty_space_layout.addWidget(empty_label)
+        #Events 
+        self.events_info_layout = QHBoxLayout()
+        self.events_info_widget = self.wrap_layout_in_widget(self.events_info_layout)
+        self.events_info_widget.setStyleSheet("border: 1px solid black;")
+        self.events =QComboBox()
+        self.events = QComboBox()
+        self.events.addItem('Events')
+        self.events.setStyleSheet("color: darkbrown; font-weight: bold;background-color: #ff6666; border: 2px solid black; border-radius: 5px")
+        self.events.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Set size policy
+        self.n_triggers = QComboBox()
+        self.n_triggers.addItem('No. Triggers')
+        self.n_triggers.setStyleSheet("color: darkbrown; font-weight: bold;background-color: #ff6666; border: 2px solid black; border-radius: 5px")
+        self.n_triggers.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.events_info_layout.addWidget(self.events)
+        self.events_info_layout.addWidget(self.n_triggers)
 
         # EEG Channel Info Layout (Row)
         self.eeg_channel_info_layout = QHBoxLayout()
@@ -164,11 +172,11 @@ class MainWindow(QMainWindow):
 
         self.eeg_layout.addWidget(self.eeg_browser_widget)
         self.eeg_layout.addWidget(self.eeg_info_widget_1)
-        
-        
         self.eeg_layout.addWidget(self.eeg_info_widget)
-        self.eeg_layout.addWidget(empty_space_widget)
+        self.eeg_layout.addWidget(self.events_info_widget)
         self.eeg_layout.addWidget(self.eeg_channel_info_widget)
+        
+        
 
         # Audio Info Layout
         self.audio_layout = QVBoxLayout()
@@ -310,6 +318,15 @@ class MainWindow(QMainWindow):
 
         self.eeg_interrputions.setText('Interruptions: ' + interruptions)
         self.eeg_n_interruptions.setText('No. of Interruptions: ' + n_interruptions)
+
+        self.events.clear()
+        events = [str(tpl) for tpl in self.eeg_data.events]
+        self.events.addItems(events)
+        
+        self.n_triggers.clear()
+        triggers =  [str(tpl) for tpl in self.eeg_data.triggers_types]
+        #triggers = ' '.join(['' + str(trig) for trig in self.eeg_data.triggers_types])
+        self.n_triggers.addItems(triggers)
 
     def visualise_eeg_data(self):
         if self.eeg_data:

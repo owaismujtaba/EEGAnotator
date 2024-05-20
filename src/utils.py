@@ -2,8 +2,85 @@ import numpy as np
 import pyxdf
 import mne
 import numpy as np
-import config
-import pdb
+
+def find_start_block_saying_time_stamp(events):
+    for i, item in enumerate(events):
+        if item[0] == 'START_BLOCK_SAYING':
+            return i, item[1], item[2]
+    return None
+
+
+def trigger_encodings(code):
+    """
+        Converts trigger codes into their corresponding marker names based on a predefined dictionary.
+        Parameters:
+            code (int): Trigger code to be converted.
+        Returns:
+            str: Corresponding marker name if code is found in the dictionary, otherwise 'UNKNOWN_CODE'.
+    """
+
+    # Dictionary mapping trigger codes to marker names
+    marker_names = {
+        255: 'START_READ_WORD',
+        224: 'END_READ_WORD',
+        192: 'START_SAY_WORD',
+        160: 'END_SAY_WORD',
+        128: 'START_BLOCK_SAYING',
+        96: 'START_BLOCK_THINKING',
+        64: 'EXPERIMENT_RESTART',
+        32: 'EXPERIMENT_REST',
+        16: 'EXPERIMENT_START',
+        8: 'EXPERIMENT_END'
+    }
+
+    marker_name = marker_names.get(code)
+    if marker_name:
+        return marker_name
+    else:
+        return 'UNKNOWN_CODE'
+
+
+def find_trigger_changes(trigger_array):
+    """
+        Finds the start and end indices of each trigger along with their respective codes in an array.        Parameters:
+            trigger_array (numpy.ndarray): Array containing trigger codes.
+        Returns:
+            list: List of tuples, each containing the marker name, start index, and end index of a trigger range.
+    """
+
+    changes = np.where(np.diff(trigger_array) != 0)[0] + 1
+
+    start_indices = [0] + changes.tolist()
+    end_indices = changes.tolist() + [len(trigger_array)]
+
+    trigger_ranges = [(trigger_encodings(trigger_array[start_indices[i]]), start_indices[i], end_indices[i]) for i in range(len(start_indices))]
+
+    return trigger_ranges
+
+
+def normalize_triggers(trigger_values):
+    """
+        Normalizes a trigger value using the formula:
+        normalized_value = (trigger_value - trigger_min) / (trigger_max - trigger_min)
+        Parameters:
+            trigger_values (numpy.ndarray): Array containing trigger values to be normalized.
+        Returns:
+            numpy.ndarray: Array of normalized trigger values rounded to the nearest integer.
+    """
+    
+    trigger_min = np.min(trigger_values)
+    trigger_max = np.max(trigger_values)
+    
+    normalized_array = (trigger_values - trigger_min) / (trigger_max - trigger_min) * 255
+    
+    rounded_array = np.round(normalized_array).astype(int)
+    
+    return rounded_array
+
+    
+
+
+
 
 
 def calculate_time_gaps(time_array, time_interval):
@@ -15,9 +92,6 @@ def calculate_time_gaps(time_array, time_interval):
     corresponding_items = time_array[1:][indices]
     #pdb.set_trace()
     return time_gaps, corresponding_items
-
-
-
 
 def convert_unix_timestamps_to_datetime(timestamps):
     """
@@ -57,7 +131,6 @@ def load_xdf_file(filepath):
     print('*******************************Completed*******************************')
 
     return streams, header
-
 
 def load_edf_file(filepath):
     """
