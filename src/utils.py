@@ -3,11 +3,7 @@ import pyxdf
 import mne
 import numpy as np
 
-def find_start_block_saying_time_stamp(events):
-    for i, item in enumerate(events):
-        if item[0] == 'START_BLOCK_SAYING':
-            return i, item[1], item[2]
-    return None
+
 
 
 def trigger_encodings(code):
@@ -76,12 +72,6 @@ def normalize_triggers(trigger_values):
     rounded_array = np.round(normalized_array).astype(int)
     
     return rounded_array
-
-    
-
-
-
-
 
 def calculate_time_gaps(time_array, time_interval):
 

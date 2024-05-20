@@ -132,6 +132,8 @@ class MainWindow(QMainWindow):
         self.events_info_layout = QHBoxLayout()
         self.events_info_widget = self.wrap_layout_in_widget(self.events_info_layout)
         self.events_info_widget.setStyleSheet("border: 1px solid black;")
+        self.eeg_sampling_frequency = QLabel('Sampling Frequency: ')
+        self.eeg_sampling_frequency.setStyleSheet("color: darkbrown; font-weight: bold;background-color: #ff6666; border: 2px solid black; border-radius: 5px")
         self.events =QComboBox()
         self.events = QComboBox()
         self.events.addItem('Events')
@@ -141,6 +143,7 @@ class MainWindow(QMainWindow):
         self.n_triggers.addItem('No. Triggers')
         self.n_triggers.setStyleSheet("color: darkbrown; font-weight: bold;background-color: #ff6666; border: 2px solid black; border-radius: 5px")
         self.n_triggers.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.events_info_layout.addWidget(self.eegsam)
         self.events_info_layout.addWidget(self.events)
         self.events_info_layout.addWidget(self.n_triggers)
 
@@ -318,6 +321,7 @@ class MainWindow(QMainWindow):
 
         self.eeg_interrputions.setText('Interruptions: ' + interruptions)
         self.eeg_n_interruptions.setText('No. of Interruptions: ' + n_interruptions)
+        self.eeg_sampling_frequency.setText('Sampling Frequency: ' + str(self.eeg_data.sampling_frequency))
 
         self.events.clear()
         events = [str(tpl) for tpl in self.eeg_data.events]

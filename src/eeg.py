@@ -6,7 +6,7 @@ from datetime import  timedelta
 from src.utils import load_edf_file
 from src.utils import convert_unix_timestamps_to_datetime
 from src.utils import normalize_triggers, find_trigger_changes
-from src.utils import find_start_block_saying_time_stamp
+#from src.utils import find_start_block_saying_time_stamp
 
 def check_interruptions(raw_data, sfreq):
     print('Checking for Interruptions')
