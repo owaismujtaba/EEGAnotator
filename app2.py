@@ -46,7 +46,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle('DeepRESTORE')
-        self.setGeometry(500, 300, 800, 300)  
+        self.setGeometry(500, 300, 1200, 300)  
         self.setStyleSheet("background-color: lightgray;")
 
         central_widget = QWidget()
@@ -123,35 +123,7 @@ class MainWindow(QMainWindow):
         self.left_layout.addWidget(self.left_layout_section_5_widget)
         self.left_layout.addWidget(self.left_layout_section_6_widget)
 
-        ##############################################################################################
-        ###################################### Right Layout Sections####################################
-
-        self.right_layout = QVBoxLayout()
-        self.right_layout_widget = self.wrap_layout_in_widget(self.right_layout)
-        self.right_layout_widget.setStyleSheet(right_left_widget_style)
-
-        #Right Layout Sections
-        self.right_layout_section_1 = QHBoxLayout()
-        self.right_layout_section_1_widget = self.wrap_layout_in_widget(self.right_layout_section_1)
-        self.right_layout_section_2 = QHBoxLayout()
-        self.right_layout_section_2_widget = self.wrap_layout_in_widget(self.right_layout_section_2)
-        self.right_layout_section_3 = QHBoxLayout()
-        self.right_layout_section_3_widget = self.wrap_layout_in_widget(self.right_layout_section_3)
-        self.right_layout_section_4 = QHBoxLayout()
-        self.right_layout_section_4_widget = self.wrap_layout_in_widget(self.right_layout_section_4)
         
-        # Add section  to right layout widget
-        self.right_layout.addWidget(self.right_layout_section_1_widget)
-        self.right_layout.addWidget(self.right_layout_section_2_widget)
-        self.right_layout.addWidget(self.right_layout_section_3_widget)
-        self.right_layout.addWidget(self.right_layout_section_4_widget)
-
-
-        # Add both left and right layout widgets to the main layout
-        self.main_layout.addWidget(self.left_layout_widget)
-        self.main_layout.addWidget(self.right_layout_widget)
-
-
         ####################Adding Lables, Buttons and ComboBoxes##################
 
         ###############################left Layout Rows############################
@@ -242,9 +214,75 @@ class MainWindow(QMainWindow):
         self.left_layout_section_6.addWidget(self.eeg_events_cbox)
 
 
+        ##############################################################################################
+        ###################################### Right Layout Sections####################################
+
+        self.right_layout = QVBoxLayout()
+        self.right_layout_widget = self.wrap_layout_in_widget(self.right_layout)
+        self.right_layout_widget.setStyleSheet(right_left_widget_style)
+
+        #Right Layout Sections
+        self.right_layout_section_1 = QHBoxLayout()
+        self.right_layout_section_1_widget = self.wrap_layout_in_widget(self.right_layout_section_1)
+        self.right_layout_section_2 = QHBoxLayout()
+        self.right_layout_section_2_widget = self.wrap_layout_in_widget(self.right_layout_section_2)
+        self.right_layout_section_3 = QHBoxLayout()
+        self.right_layout_section_3_widget = self.wrap_layout_in_widget(self.right_layout_section_3)
+        self.right_layout_section_4 = QHBoxLayout()
+        self.right_layout_section_4_widget = self.wrap_layout_in_widget(self.right_layout_section_4)
+        
+        # Add section  to right layout widget
+        self.right_layout.addWidget(self.right_layout_section_1_widget)
+        self.right_layout.addWidget(self.right_layout_section_2_widget)
+        self.right_layout.addWidget(self.right_layout_section_3_widget)
+        self.right_layout.addWidget(self.right_layout_section_4_widget)
 
 
 
+
+        ####################Adding Lables, Buttons and ComboBoxes##################
+        ###############################left Layout Rows############################
+        #***********************************ROW 1***********************************
+        header_label = QLabel()
+        #<span style="text-decoration: underline; text-decoration-thickness: 3px;">This is an underlined label with increased thickness</span>')
+
+        header_label.setText('<center><b><font color="#8B0000" size="10"><u> AUDIO (*.xdf) FILE INFORMATION<u></font></b></center>')
+        self.right_layout_section_1.addWidget(header_label)
+
+        #***********************************ROW 2***********************************
+        self.audio_file_name_label = QLabel('AUDIO (.edf) File :')
+        self.audio_file_name_label.setStyleSheet(label_style)
+        self.audio_file_name_textbox = QLineEdit('Filename will appear hear when you sucessfully select the xdf file')
+        self.audio_file_name_textbox.setReadOnly(True)
+        self.audio_file_name_textbox.setStyleSheet(text_box_style)
+        self.audio_select_file_button = QPushButton('Select File')
+        self.audio_select_file_button.setStyleSheet(button_style)
+
+        self.right_layout_section_2.addWidget(self.audio_file_name_label)
+        self.right_layout_section_2.addWidget(self.audio_file_name_textbox)
+        self.right_layout_section_2.addWidget(self.audio_select_file_button)
+
+        #***********************************ROW 3***********************************
+        self.audio_sampling_freq_label = QLabel('Sampling Frequency :')
+        self.audio_sampling_freq_label.setStyleSheet(label_style)
+        self.audio_sampling_freq_text = QLineEdit('')
+        self.audio_sampling_freq_text.setStyleSheet(text_box_style)
+        self.audio_sampling_freq_text.setReadOnly(True)
+        self.audio_duration_label = QLabel('Duration: ')
+        self.audio_duration_label.setStyleSheet(label_style)
+        self.audio_duration_text = QLineEdit('')
+        self.audio_duration_text.setStyleSheet(text_box_style)
+        self.audio_duration_text.setReadOnly(True)
+
+        self.right_layout_section_3.addWidget(self.audio_sampling_freq_label)
+        self.right_layout_section_3.addWidget(self.audio_sampling_freq_text)
+        self.right_layout_section_3.addWidget(self.audio_duration_label)
+        self.right_layout_section_3.addWidget(self.audio_duration_text)
+        
+
+        # Add both left and right layout widgets to the main layout
+        self.main_layout.addWidget(self.left_layout_widget)
+        self.main_layout.addWidget(self.right_layout_widget)
 
     def wrap_layout_in_widget(self, layout):
         widget = QWidget()
