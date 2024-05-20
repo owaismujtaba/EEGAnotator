@@ -13,7 +13,7 @@ def calculate_time_gaps(time_array, time_interval):
 
     time_gaps = differences[indices]
     corresponding_items = time_array[1:][indices]
-    pdb.set_trace()
+    #pdb.set_trace()
     return time_gaps, corresponding_items
 
 

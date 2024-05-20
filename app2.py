@@ -1,43 +1,13 @@
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QComboBox, QFileDialog, QMessageBox
+    QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QComboBox
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PyQt5.QtCore import Qt
 import sys
 import mne
 from src.GUI.utils import get_file_name_from_path
 from src.eeg import EEG
-from src.audio import AUDIO
 
-class LoadEEGThread(QThread):
-    finished = pyqtSignal(object)
-    error = pyqtSignal(str)
-
-    def __init__(self, file_path):
-        super().__init__()
-        self.file_path = file_path
-
-    def run(self):
-        try:
-            eeg_data = EEG(self.file_path)
-            self.finished.emit(eeg_data)
-        except Exception as e:
-            self.error.emit(str(e))
-
-
-class LoadAudioThread(QThread):
-    finished = pyqtSignal(object)
-    error = pyqtSignal(str)
-
-    def __init__(self, file_path):
-        super().__init__()
-        self.file_path = file_path
-
-    def run(self):
-        try:
-            audio_data = AUDIO(self.file_path)
-            self.finished.emit(audio_data)
-        except Exception as e:
-            self.error.emit(str(e))
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -112,6 +82,7 @@ class MainWindow(QMainWindow):
         self.eeg_n_interruptions.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
         self.eeg_info_layout_1.addWidget(self.eeg_interrputions)
         self.eeg_info_layout_1.addWidget(self.eeg_n_interruptions)
+
 
         # EEG Channel Info Layout (Row)
         self.eeg_channel_info_layout = QHBoxLayout()
@@ -194,29 +165,13 @@ class MainWindow(QMainWindow):
         self.files_info_layout.addLayout(self.eeg_layout)
         self.files_info_layout.addLayout(self.audio_layout)
 
-        # Define functions for button clicks
+
+        #Define functions for button clicks
+
         self.eeg_browser_file_btn.clicked.connect(self.browse_eeg_file)
         self.eeg_load_file_btn.clicked.connect(self.load_edf_file)
         self.eeg_visualise_btn.clicked.connect(self.visualise_eeg_data)
 
-        self.audio_browser_btn.clicked.connect(self.browse_audio_file)
-        self.audio_load_btn.clicked.connect(self.load_xdf_file)
-
-    def browse_audio_file(self):
-        file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(self, "Open XDF File", "", "XDF Files (*.xdf)")
-        if file_path:
-            self.xdf_file_path = file_path
-            self.xdf_file_name = get_file_name_from_path(file_path)
-            self.audio_browser_btn.setText(self.xdf_file_name)
-
-    def load_xdf_file(self):
-        if self.xdf_file_path:
-            self.waiting_msg_box = self.show_waiting_message("Loading XEG data. Please wait...")
-            self.load_thread_audio = LoadAudioThread(self.xdf_file_path)
-            self.load_thread_audio.finished.connect(self.on_load_finished_audio)
-            self.load_thread_audio.error.connect(self.on_load_error)
-            self.load_thread_audio.start()
 
     def browse_eeg_file(self):
         file_dialog = QFileDialog()
@@ -228,35 +183,15 @@ class MainWindow(QMainWindow):
 
     def load_edf_file(self):
         if self.edf_file_path:
-            self.waiting_msg_box = self.show_waiting_message("Loading EEG data. Please wait...")
-            self.load_thread_eeg = LoadEEGThread(self.edf_file_path)
-            self.load_thread_eeg.finished.connect(self.on_load_finished_eeg)
-            self.load_thread_eeg.error.connect(self.on_load_error)
-            self.load_thread_eeg.start()
-
-    def update_audio_info(self):
-        self.audio_start_time.setText(str(self.audio_data.start_time_marker))
-        self.audio_duration.setText(str(self.audio_data.end_time_marker))
-        pass
-
-    def on_load_finished_audio(self, audio_data):
-        self.audio_data = audio_data
-        self.update_audio_info()
-        self.waiting_msg_box.accept()
-
-    def on_load_finished_eeg(self, eeg_data):
-        self.eeg_data = eeg_data
-        self.update_eeg_info()
-        self.waiting_msg_box.accept()
-
-    def on_load_error(self, error_message):
-        self.waiting_msg_box.accept()
-        QMessageBox.critical(self, "Error", f"Failed to load EEG data: {error_message}")
-
-    def update_eeg_info(self):
+            waiting_msg_box = self.show_waiting_message("Loading EEG data. Please wait...")
+            self.eeg_data = EEG(self.edf_file_path)
+            self.updade_eeg_info()
+            waiting_msg_box.accept()
+            
+    def updade_eeg_info(self):
         self.eeg_label.setText('File Loaded')
-        self.eeg_start_time.setText('Start: ' + str(self.eeg_data.start_time))
-        self.eeg_duration.setText('Duration: ' + str(self.eeg_data.duration))
+        self.eeg_start_time.setText('Start:' + str(self.eeg_data.start_time))
+        self.eeg_duration.setText('Duration: ' +str(self.eeg_data.duration))
         self.eeg_n_channels.setText('No. Channels: ' + str(self.eeg_data.n_channels))
         self.eeg_channel_names_box.clear()
         self.eeg_channel_names_box.addItems(self.eeg_data.channel_names)
@@ -270,6 +205,7 @@ class MainWindow(QMainWindow):
         
         self.eeg_interrputions.setText('Interruptions: ' + interruptions)
         self.eeg_n_interruptions.setText('No. of Interruptions: ' + n_interruptions)
+        #self.eeg_bad_channels.addItems(self.eeg_data.raw_data.)
 
     def visualise_eeg_data(self):
         if self.eeg_data:
@@ -281,9 +217,10 @@ class MainWindow(QMainWindow):
         waiting_msg_box.setStandardButtons(QMessageBox.NoButton)
         waiting_msg_box.setWindowFlags(Qt.Window | Qt.CustomizeWindowHint | Qt.WindowTitleHint)
         waiting_msg_box.show()
-        QApplication.processEvents()
-        return waiting_msg_box
+        QApplication.processEvents()  
 
+        return waiting_msg_box
+    
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     main_window = MainWindow()
