@@ -1,0 +1,5 @@
+# i should not conside time
+marker in the trigger 
+normalize the trigger 255
+and look for 128 to start experiment
+mark the start of the experiment
