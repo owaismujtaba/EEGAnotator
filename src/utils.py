@@ -72,7 +72,7 @@ def calculate_time_gaps(time_array, time_interval):
 
     time_gaps = differences[indices]
     corresponding_items = time_array[1:][indices]
-    pdb.set_trace()
+    #pdb.set_trace()
     return time_gaps, corresponding_items
 
 
@@ -135,6 +135,7 @@ def load_edf_file(filepath):
     print('***************************Loading .edf file***************************')
     
     # Use mne library to read the raw EEG data from the EDF file
+    print(filepath)
     streams = mne.io.read_raw_edf(filepath)
     print('*******************************Completed*******************************')
 
