@@ -35,7 +35,7 @@ class DATA:
         self.eeg_streams = EEG(self.filepath_edf)
 
         # Initialize audio data streams and print info
-        #self.audio_streams = AUDIO(self.filepath_xdf)
+        self.audio_streams = AUDIO(self.filepath_xdf)
 
         #self.remove_gaps_by_markers_in_audio()
         

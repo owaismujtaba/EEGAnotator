@@ -1,228 +1,93 @@
-from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QComboBox
-)
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
-from PyQt5.QtCore import Qt
 import sys
-import mne
-from src.GUI.utils import get_file_name_from_path
-from src.eeg import EEG
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget
+from PyQt5.QtCore import Qt
+import numpy as np
+from pydub import AudioSegment
+import pygame
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
-
-class MainWindow(QMainWindow):
+class AudioPlayer(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle('DeepRESTORE')
-        self.setGeometry(500, 300, 800, 300)  # Set window size and position
+        # Initialize pygame mixer
+        pygame.mixer.init()
 
-        # Set background color of the main window
-        self.setStyleSheet("background-color: lightgray;")
+        # Create a sample numpy array representing audio data
+        self.audio_array = np.random.uniform(-1, 1, 44100).astype(np.float32)
 
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        self.files_info_layout = QHBoxLayout()  # Main horizontal layout
-        central_widget.setLayout(self.files_info_layout)
+        # Convert the numpy array to an AudioSegment
+        self.audio_segment = self.array_to_audio_segment(self.audio_array)
 
-        # EEG Info Layout
-        self.eeg_layout = QVBoxLayout()
+        # Save the AudioSegment to a temporary file
+        self.audio_segment.export("temp_audio.wav", format="wav")
 
-        # EEG File Browser Layout (Row)
-        self.eeg_browser_layout = QHBoxLayout()
-        self.eeg_label = QLabel('EEG(.EDF) File:')
-        self.eeg_label.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
-        self.eeg_browser_file_btn = QPushButton('Select File')
-        self.eeg_browser_file_btn.setStyleSheet("""
-            QPushButton {
-                background-color: lightcoral;
-                color: black;
-                border-radius: 5px;
-                padding: 5px;
-                border: 2px solid black;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: lightblue;
-            }
-        """)
-        self.eeg_load_file_btn = QPushButton('Load')
-        self.eeg_load_file_btn.setStyleSheet("""
-            QPushButton {
-                background-color: lightcoral;
-                color: black;
-                border-radius: 5px;
-                padding: 5px;
-                border: 2px solid black;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: lightblue;
-            }
-        """)
-        self.eeg_browser_layout.addWidget(self.eeg_label)
-        self.eeg_browser_layout.addWidget(self.eeg_browser_file_btn)
-        self.eeg_browser_layout.addWidget(self.eeg_load_file_btn)
+        # Set up the user interface
+        self.init_ui()
 
-        # EEG Info Layout (Row)
-        self.eeg_info_layout = QHBoxLayout()
-        self.eeg_start_time = QLabel('Start:')
-        self.eeg_start_time.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
-        self.eeg_duration = QLabel('Duration:')
-        self.eeg_duration.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
-        self.eeg_n_channels = QLabel('No. of Channels:')
-        self.eeg_n_channels.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
-        self.eeg_info_layout.addWidget(self.eeg_start_time)
-        self.eeg_info_layout.addWidget(self.eeg_duration)
-        self.eeg_info_layout.addWidget(self.eeg_n_channels)
+    def array_to_audio_segment(self, array, sample_rate=44100):
+        # Convert numpy array to pydub AudioSegment
+        audio_segment = AudioSegment(
+            array.tobytes(), 
+            frame_rate=sample_rate, 
+            sample_width=array.dtype.itemsize, 
+            channels=1
+        )
+        return audio_segment
 
-        self.eeg_info_layout_1 = QHBoxLayout()
-        self.eeg_interrputions = QLabel('Interruptions: ')
-        self.eeg_interrputions.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
-        self.eeg_n_interruptions = QLabel('No. Interruptions')
-        self.eeg_n_interruptions.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
-        self.eeg_info_layout_1.addWidget(self.eeg_interrputions)
-        self.eeg_info_layout_1.addWidget(self.eeg_n_interruptions)
+    def init_ui(self):
+        self.setWindowTitle('PyQt5 Audio Player with Waveform')
 
+        # Create buttons
+        play_button = QPushButton('Play')
+        pause_button = QPushButton('Pause')
+        stop_button = QPushButton('Stop')
 
-        # EEG Channel Info Layout (Row)
-        self.eeg_channel_info_layout = QHBoxLayout()
-        self.eeg_channel_names_box = QComboBox()
-        self.eeg_bad_channels = QComboBox()
-        self.eeg_visualise_btn = QPushButton('Visualize')
-        self.eeg_visualise_btn.setStyleSheet("""
-            QPushButton {
-                background-color: lightcoral;
-                color: black;
-                border-radius: 5px;
-                padding: 5px;
-                border: 2px solid black;
-                font-weight: bold;                             
-            }
-            QPushButton:hover {
-                background-color: lightblue;
-            }
-        """)
-        self.eeg_channel_info_layout.addWidget(self.eeg_channel_names_box)
-        self.eeg_channel_info_layout.addWidget(self.eeg_bad_channels)
-        self.eeg_channel_info_layout.addWidget(self.eeg_visualise_btn)
+        # Connect buttons to their respective methods
+        play_button.clicked.connect(self.play_audio)
+        pause_button.clicked.connect(self.pause_audio)
+        stop_button.clicked.connect(self.stop_audio)
 
-        self.eeg_layout.addLayout(self.eeg_browser_layout)
-        self.eeg_layout.addLayout(self.eeg_info_layout_1)
-        self.eeg_layout.addLayout(self.eeg_info_layout)
-        self.eeg_layout.addLayout(self.eeg_channel_info_layout)
+        # Set up the matplotlib figure and canvas
+        self.figure, self.ax = plt.subplots()
+        self.canvas = FigureCanvas(self.figure)
 
-        # Audio Info Layout
-        self.audio_layout = QVBoxLayout()
+        # Plot the waveform
+        self.plot_waveform(self.audio_array)
 
-        # Audio File Browser Layout (Row)
-        self.audio_browser_layout = QHBoxLayout()
-        self.audio_file_name = QLabel('Audio(.XDF) File:')
-        self.audio_file_name.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
-        self.audio_browser_btn = QPushButton('Select File')
-        self.audio_browser_btn.setStyleSheet("""
-            QPushButton {
-                background-color: lightcoral;
-                color: black;
-                border-radius: 5px;
-                padding: 5px;
-                border: 2px solid black;
-                font-weight: bold;            
-            }
-            QPushButton:hover {
-                background-color: lightblue;
-            }
-        """)
-        self.audio_load_btn = QPushButton('Load File')
-        self.audio_load_btn.setStyleSheet("""
-            QPushButton {
-                background-color: lightcoral;
-                color: black;
-                border-radius: 5px;
-                padding: 5px;
-                border: 2px solid black;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: lightblue;
-            }
-        """)
-        self.audio_browser_layout.addWidget(self.audio_file_name)
-        self.audio_browser_layout.addWidget(self.audio_browser_btn)
-        self.audio_browser_layout.addWidget(self.audio_load_btn)
+        # Set up layout
+        layout = QVBoxLayout()
+        layout.addWidget(self.canvas)
+        layout.addWidget(play_button)
+        layout.addWidget(pause_button)
+        layout.addWidget(stop_button)
 
-        # Audio Info Layout (Row)
-        self.audio_info_layout = QHBoxLayout()
-        self.audio_start_time = QLabel('Start:')
-        self.audio_start_time.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
-        self.audio_duration = QLabel('Duration:')
-        self.audio_duration.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
-        self.audio_info_layout.addWidget(self.audio_start_time)
-        self.audio_info_layout.addWidget(self.audio_duration)
+        # Set the central widget
+        container = QWidget()
+        container.setLayout(layout)
+        self.setCentralWidget(container)
 
-        self.audio_layout.addLayout(self.audio_browser_layout)
-        self.audio_layout.addLayout(self.audio_info_layout)
+    def plot_waveform(self, audio_array):
+        self.ax.clear()
+        self.ax.plot(audio_array)
+        self.ax.set_title("Waveform")
+        self.ax.set_xlabel("Samples")
+        self.ax.set_ylabel("Amplitude")
+        self.canvas.draw()
 
-        self.files_info_layout.addLayout(self.eeg_layout)
-        self.files_info_layout.addLayout(self.audio_layout)
+    def play_audio(self):
+        pygame.mixer.music.load("temp_audio.wav")
+        pygame.mixer.music.play()
 
+    def pause_audio(self):
+        pygame.mixer.music.pause()
 
-        #Define functions for button clicks
+    def stop_audio(self):
+        pygame.mixer.music.stop()
 
-        self.eeg_browser_file_btn.clicked.connect(self.browse_eeg_file)
-        self.eeg_load_file_btn.clicked.connect(self.load_edf_file)
-        self.eeg_visualise_btn.clicked.connect(self.visualise_eeg_data)
-
-
-    def browse_eeg_file(self):
-        file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(self, "Open EDF File", "", "EDF Files (*.edf)")
-        if file_path:
-            self.edf_file_path = file_path
-            self.edf_file_name = get_file_name_from_path(file_path)
-            self.eeg_browser_file_btn.setText(self.edf_file_name)
-
-    def load_edf_file(self):
-        if self.edf_file_path:
-            waiting_msg_box = self.show_waiting_message("Loading EEG data. Please wait...")
-            self.eeg_data = EEG(self.edf_file_path)
-            self.updade_eeg_info()
-            waiting_msg_box.accept()
-            
-    def updade_eeg_info(self):
-        self.eeg_label.setText('File Loaded')
-        self.eeg_start_time.setText('Start:' + str(self.eeg_data.start_time))
-        self.eeg_duration.setText('Duration: ' +str(self.eeg_data.duration))
-        self.eeg_n_channels.setText('No. Channels: ' + str(self.eeg_data.n_channels))
-        self.eeg_channel_names_box.clear()
-        self.eeg_channel_names_box.addItems(self.eeg_data.channel_names)
-        self.eeg_bad_channels.clear()
-        if self.eeg_data.interruptions_check:
-            interruptions = 'True'
-            n_interruptions = len(self.eeg_data.interruptions)
-        else:
-            interruptions = 'False'
-            n_interruptions = '0'
-        
-        self.eeg_interrputions.setText('Interruptions: ' + interruptions)
-        self.eeg_n_interruptions.setText('No. of Interruptions: ' + n_interruptions)
-        #self.eeg_bad_channels.addItems(self.eeg_data.raw_data.)
-
-    def visualise_eeg_data(self):
-        if self.eeg_data:
-            self.eeg_data.raw_data.plot()
-
-    def show_waiting_message(self, message):
-        waiting_msg_box = QMessageBox()
-        waiting_msg_box.setText(message)
-        waiting_msg_box.setStandardButtons(QMessageBox.NoButton)
-        waiting_msg_box.setWindowFlags(Qt.Window | Qt.CustomizeWindowHint | Qt.WindowTitleHint)
-        waiting_msg_box.show()
-        QApplication.processEvents()  
-
-        return waiting_msg_box
-    
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    main_window = MainWindow()
-    main_window.show()
+    window = AudioPlayer()
+    window.show()
     sys.exit(app.exec_())
