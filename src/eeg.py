@@ -4,7 +4,7 @@ import pdb
 import numpy as np
 from datetime import  timedelta
 from src.utils import load_edf_file
-
+from src.utils import convert_unix_timestamps_to_datetime
 def check_interruptions(raw_data, sfreq):
     print('Checking for Interruptions')
     times = raw_data.times
@@ -55,6 +55,7 @@ class EEG:
         self.filepath = filepath_edf 
         self.raw_data = load_edf_file(filepath_edf)
         self.n_channels = self.raw_data.info['nchan']
+        self.bad_channels = self.raw_data.info['bads']
         self.channel_names = self.raw_data.ch_names
         self.sampling_frequency = self.raw_data.info['sfreq']
         self.triggers = self.raw_data['TRIG'][0][0] # Assuming 'TRIG' is the trigger channel
@@ -69,6 +70,8 @@ class EEG:
             self.raw_data,
             self.sampling_frequency
         )
+
+        self.times = convert_unix_timestamps_to_datetime(self.raw_data.times)
 
 
     def print_info(self):

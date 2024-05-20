@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QComboBox, QFileDialog, QMessageBox
+    QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QComboBox, QFileDialog, QMessageBox, QSizePolicy
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 import sys
@@ -22,7 +22,6 @@ class LoadEEGThread(QThread):
             self.finished.emit(eeg_data)
         except Exception as e:
             self.error.emit(str(e))
-
 
 class LoadAudioThread(QThread):
     finished = pyqtSignal(object)
@@ -56,11 +55,16 @@ class MainWindow(QMainWindow):
 
         # EEG Info Layout
         self.eeg_layout = QVBoxLayout()
+        self.eeg_widget = self.wrap_layout_in_widget(self.eeg_layout)
+        self.eeg_widget.setStyleSheet("border: 2px solid black;")
 
         # EEG File Browser Layout (Row)
         self.eeg_browser_layout = QHBoxLayout()
+        self.eeg_browser_widget = self.wrap_layout_in_widget(self.eeg_browser_layout)
+        self.eeg_browser_widget.setStyleSheet("border: 1px solid black;")
         self.eeg_label = QLabel('EEG(.EDF) File:')
         self.eeg_label.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
+        self.eeg_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Set size policy
         self.eeg_browser_file_btn = QPushButton('Select File')
         self.eeg_browser_file_btn.setStyleSheet("""
             QPushButton {
@@ -95,28 +99,51 @@ class MainWindow(QMainWindow):
 
         # EEG Info Layout (Row)
         self.eeg_info_layout = QHBoxLayout()
+        self.eeg_info_widget = self.wrap_layout_in_widget(self.eeg_info_layout)
+        self.eeg_info_widget.setStyleSheet("border: 1px solid black;")
         self.eeg_start_time = QLabel('Start:')
         self.eeg_start_time.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
+        self.eeg_start_time.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Set size policy
         self.eeg_duration = QLabel('Duration:')
         self.eeg_duration.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
+        self.eeg_duration.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Set size policy
         self.eeg_n_channels = QLabel('No. of Channels:')
         self.eeg_n_channels.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
+        self.eeg_n_channels.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Set size policy
         self.eeg_info_layout.addWidget(self.eeg_start_time)
         self.eeg_info_layout.addWidget(self.eeg_duration)
         self.eeg_info_layout.addWidget(self.eeg_n_channels)
 
+        
+
         self.eeg_info_layout_1 = QHBoxLayout()
+        self.eeg_info_widget_1 = self.wrap_layout_in_widget(self.eeg_info_layout_1)
+        self.eeg_info_widget_1.setStyleSheet("border: 1px solid black;")
         self.eeg_interrputions = QLabel('Interruptions: ')
         self.eeg_interrputions.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
+        self.eeg_interrputions.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Set size policy
         self.eeg_n_interruptions = QLabel('No. Interruptions')
         self.eeg_n_interruptions.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
+        self.eeg_n_interruptions.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Set size policy
         self.eeg_info_layout_1.addWidget(self.eeg_interrputions)
         self.eeg_info_layout_1.addWidget(self.eeg_n_interruptions)
 
+        #Empty space
+        empty_space_layout = QHBoxLayout()
+        empty_space_widget = self.wrap_layout_in_widget(empty_space_layout)
+        empty_space_widget.setStyleSheet("border: 0px solid black;")
+        empty_label = QLabel()
+        empty_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Set size policy
+        empty_space_layout.addWidget(empty_label)
+
         # EEG Channel Info Layout (Row)
         self.eeg_channel_info_layout = QHBoxLayout()
+        self.eeg_channel_info_widget = self.wrap_layout_in_widget(self.eeg_channel_info_layout)
+        self.eeg_channel_info_widget.setStyleSheet("border: 1px solid black;")
         self.eeg_channel_names_box = QComboBox()
+        self.eeg_channel_names_box.addItem('Channels')
         self.eeg_bad_channels = QComboBox()
+        self.eeg_bad_channels.addItem('Bad Channels')
         self.eeg_visualise_btn = QPushButton('Visualize')
         self.eeg_visualise_btn.setStyleSheet("""
             QPushButton {
@@ -135,18 +162,26 @@ class MainWindow(QMainWindow):
         self.eeg_channel_info_layout.addWidget(self.eeg_bad_channels)
         self.eeg_channel_info_layout.addWidget(self.eeg_visualise_btn)
 
-        self.eeg_layout.addLayout(self.eeg_browser_layout)
-        self.eeg_layout.addLayout(self.eeg_info_layout_1)
-        self.eeg_layout.addLayout(self.eeg_info_layout)
-        self.eeg_layout.addLayout(self.eeg_channel_info_layout)
+        self.eeg_layout.addWidget(self.eeg_browser_widget)
+        self.eeg_layout.addWidget(self.eeg_info_widget_1)
+        
+        
+        self.eeg_layout.addWidget(self.eeg_info_widget)
+        self.eeg_layout.addWidget(empty_space_widget)
+        self.eeg_layout.addWidget(self.eeg_channel_info_widget)
 
         # Audio Info Layout
         self.audio_layout = QVBoxLayout()
+        self.audio_widget = self.wrap_layout_in_widget(self.audio_layout)
+        self.audio_widget.setStyleSheet("border: 2px solid black;")
 
         # Audio File Browser Layout (Row)
         self.audio_browser_layout = QHBoxLayout()
+        self.audio_browser_widget = self.wrap_layout_in_widget(self.audio_browser_layout)
+        self.audio_browser_widget.setStyleSheet("border: 1px solid black;")
         self.audio_file_name = QLabel('Audio(.XDF) File:')
         self.audio_file_name.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
+        self.audio_file_name.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Set size policy
         self.audio_browser_btn = QPushButton('Select File')
         self.audio_browser_btn.setStyleSheet("""
             QPushButton {
@@ -155,13 +190,13 @@ class MainWindow(QMainWindow):
                 border-radius: 5px;
                 padding: 5px;
                 border: 2px solid black;
-                font-weight: bold;            
+                font-weight: bold;
             }
             QPushButton:hover {
                 background-color: lightblue;
             }
         """)
-        self.audio_load_btn = QPushButton('Load File')
+        self.audio_load_btn = QPushButton('Load')
         self.audio_load_btn.setStyleSheet("""
             QPushButton {
                 background-color: lightcoral;
@@ -181,18 +216,22 @@ class MainWindow(QMainWindow):
 
         # Audio Info Layout (Row)
         self.audio_info_layout = QHBoxLayout()
+        self.audio_info_widget = self.wrap_layout_in_widget(self.audio_info_layout)
+        self.audio_info_widget.setStyleSheet("border: 1px solid black;")
         self.audio_start_time = QLabel('Start:')
         self.audio_start_time.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
+        self.audio_start_time.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Set size policy
         self.audio_duration = QLabel('Duration:')
         self.audio_duration.setStyleSheet("color: darkbrown; font-weight: bold;background-color: lightgreen; border: 2px solid black; border-radius: 5px")
+        self.audio_duration.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Set size policy
         self.audio_info_layout.addWidget(self.audio_start_time)
         self.audio_info_layout.addWidget(self.audio_duration)
 
-        self.audio_layout.addLayout(self.audio_browser_layout)
-        self.audio_layout.addLayout(self.audio_info_layout)
+        self.audio_layout.addWidget(self.audio_browser_widget)
+        self.audio_layout.addWidget(self.audio_info_widget)
 
-        self.files_info_layout.addLayout(self.eeg_layout)
-        self.files_info_layout.addLayout(self.audio_layout)
+        self.files_info_layout.addWidget(self.eeg_widget)
+        self.files_info_layout.addWidget(self.audio_widget)
 
         # Define functions for button clicks
         self.eeg_browser_file_btn.clicked.connect(self.browse_eeg_file)
@@ -261,13 +300,14 @@ class MainWindow(QMainWindow):
         self.eeg_channel_names_box.clear()
         self.eeg_channel_names_box.addItems(self.eeg_data.channel_names)
         self.eeg_bad_channels.clear()
+        self.eeg_bad_channels.addItems(self.eeg_data.bad_channels)
         if self.eeg_data.interruptions_check:
             interruptions = 'True'
             n_interruptions = len(self.eeg_data.interruptions)
         else:
             interruptions = 'False'
             n_interruptions = '0'
-        
+
         self.eeg_interrputions.setText('Interruptions: ' + interruptions)
         self.eeg_n_interruptions.setText('No. of Interruptions: ' + n_interruptions)
 
@@ -283,6 +323,11 @@ class MainWindow(QMainWindow):
         waiting_msg_box.show()
         QApplication.processEvents()
         return waiting_msg_box
+
+    def wrap_layout_in_widget(self, layout):
+        widget = QWidget()
+        widget.setLayout(layout)
+        return widget
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
