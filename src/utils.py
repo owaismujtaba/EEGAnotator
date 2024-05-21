@@ -9,13 +9,15 @@ import numpy as np
 def trigger_encodings(code):
     """
         Converts trigger codes into their corresponding marker names based on a predefined dictionary.
+        If the exact code is not found, the closest code is used.
+        
         Parameters:
             code (int): Trigger code to be converted.
+        
         Returns:
-            str: Corresponding marker name if code is found in the dictionary, otherwise 'UNKNOWN_CODE'.
+            str: Corresponding marker name if code is found in the dictionary, otherwise the closest code's marker name.
     """
 
-    # Dictionary mapping trigger codes to marker names
     marker_names = {
         255: 'START_READ_WORD',
         224: 'END_READ_WORD',
@@ -30,10 +32,14 @@ def trigger_encodings(code):
     }
 
     marker_name = marker_names.get(code)
+    
     if marker_name:
         return marker_name
-    else:
-        return 'UNKNOWN_CODE'
+    
+    closest_code = min(marker_names.keys(), key=lambda k: abs(k - code))
+    closest_marker_name = marker_names[closest_code]
+
+    return closest_marker_name
 
 
 def find_trigger_changes(trigger_array):

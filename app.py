@@ -143,7 +143,7 @@ class MainWindow(QMainWindow):
         self.n_triggers.addItem('No. Triggers')
         self.n_triggers.setStyleSheet("color: darkbrown; font-weight: bold;background-color: #ff6666; border: 2px solid black; border-radius: 5px")
         self.n_triggers.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.events_info_layout.addWidget(self.eegsam)
+        self.events_info_layout.addWidget(self.n_triggers)
         self.events_info_layout.addWidget(self.events)
         self.events_info_layout.addWidget(self.n_triggers)
 
