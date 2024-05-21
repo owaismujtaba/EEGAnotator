@@ -3,48 +3,7 @@ import pyxdf
 import mne
 import pdb
 
-def find_start_block_saying_time_stamp(events):
-    for i, item in enumerate(events):
-        if item[0] == 'START_BLOCK_SAYING':
-            return i, item[1], item[2]
-    return None
 
-def correct_eeg_triggers(triggers):
-    """
-    Corrects a list of EEG triggers by mapping them to the nearest valid code
-    from a predefined set of correct codes.
-
-    Parameters:
-    triggers (list of int): A list of integer trigger codes to be corrected.
-
-    Returns:
-    list of int: A list of corrected trigger codes, where each input trigger
-                 is either directly mapped if it exists in the correct codings,
-                 or mapped to the nearest valid code if it does not.
-    """
-
-    correct_codings = {
-        255: 255, 224: 224, 192: 192, 160: 160,
-        128: 128, 96: 96, 64: 64, 32: 32, 16: 16, 8: 8
-    }
-
-    valid_codes = sorted(correct_codings.keys())
-
-    max_trigger = max(valid_codes)
-    nearest_code_map = {}
-
-    for i in range(max_trigger + 1):
-        nearest_code = min(valid_codes, key=lambda x: abs(x - i))
-        nearest_code_map[i] = correct_codings[nearest_code]
-
-    corrected_triggers = []
-    for trigger in triggers:
-        if trigger in nearest_code_map:
-            corrected_triggers.append(nearest_code_map[trigger])
-        else:
-            corrected_triggers.append(nearest_code_map[max_trigger])
-    pdb.set_trace()
-    return corrected_triggers
 
 
 def trigger_encodings(code):
@@ -100,63 +59,56 @@ def eeg_events_mapping(trigger_values, trigger_points):
         start = trigger_points[i]
         end = trigger_points[i + 1]
         event_string = f"{event} {start} {end}"
+        if end-start < 25:
+            continue
         events_start_end.append(event_string)
+        
 
     return events_start_end 
 
-def clean_eeg_trigger_points(trigger_array):
-    """
-        Clean trigger points in an EEG signal.
 
-        Args:
-            trigger_array (numpy.ndarray): Array containing trigger values.
+def eeg_transition_trigger_points(trigger_array):
+    transition_points_indexes = np.where(np.diff(trigger_array) != 0)[0] + 1
+    transition_points_indexes = np.array([0] + transition_points_indexes.tolist())
+  
+    return transition_points_indexes
+ 
+def correct_eeg_triggers(triggers):
+    """
+        Corrects a list of EEG triggers by mapping them to the nearest valid code
+        from a predefined set of correct codes.
+
+        Parameters:
+        triggers (list of int): A list of integer trigger codes to be corrected.
 
         Returns:
-            numpy.ndarray: Array containing cleaned trigger points.
+        list of int: A list of corrected trigger codes, where each input trigger
+                    is either directly mapped if it exists in the correct codings,
+                    or mapped to the nearest valid code if it does not.
     """
+
+    correct_codings = {
+        255: 255, 224: 224, 192: 192, 160: 160,
+        128: 128, 96: 96, 64: 64, 32: 32, 16: 16, 8: 8
+    }
+
+    valid_codes = sorted(correct_codings.keys())
+
+    max_trigger = max(valid_codes)
+    nearest_code_map = {}
+
+    for i in range(max_trigger + 1):
+        nearest_code = min(valid_codes, key=lambda x: abs(x - i))
+        nearest_code_map[i] = correct_codings[nearest_code]
+
+    corrected_triggers = []
+    for trigger in triggers:
+        if trigger in nearest_code_map:
+            corrected_triggers.append(nearest_code_map[trigger])
+        else:
+            corrected_triggers.append(nearest_code_map[max_trigger])
     
-    transition_points_indexes = np.where(np.diff(trigger_array) != 0)[0] + 1
-    transition_points_indexes = np.array([0] + transition_points_indexes.tolist())
-    
-    previous_group_value = trigger_array[0]
-    indexes_with_less_group_width = []
-    for index in range(2, transition_points_indexes.shape[0]-1):
-        start = transition_points_indexes[index-1]
-        end = transition_points_indexes[index]
-
-        if end - start < 15:
-            
-            trigger_array[start:end] = previous_group_value
-            indexes_with_less_group_width.append(index-1)
-            
-        previous_group_value = trigger_array[start]
-        
-    pdb.set_trace()
-    transition_points_without_less_width = np.delete(transition_points_indexes, indexes_with_less_group_width)
-    
-    transition_points_indexes = np.where(np.diff(trigger_array) != 0)[0] + 1
-    transition_points_indexes = np.array([0] + transition_points_indexes.tolist())
-
-    return transition_points_without_less_width
-
-def eeg_clean_trigger_points1(trigger_array):
-    """
-        Clean trigger points in an EEG signal.
-
-        Args:
-            trigger_array (numpy.ndarray): Array containing trigger values.
-
-        Returns:
-            numpy.ndarray: Array containing cleaned trigger points.
-    """
-    transition_points_indexes = np.where(np.diff(trigger_array) != 0)[0] + 1
-    transition_points_indexes = np.array([0] + transition_points_indexes.tolist())
-    
-    less_width_indices = np.where(np.diff(transition_points_indexes) < 20)[0] + 1
-    transition_points_without_less_width = np.delete(transition_points_indexes, less_width_indices)
-   
-    return transition_points_without_less_width
-
+    return corrected_triggers
 
 def normalize_eeg_triggers(trigger_values):
     """
@@ -175,12 +127,6 @@ def normalize_eeg_triggers(trigger_values):
     normalized_triggers = np.round(normalized_triggers).astype(int)
     
     return normalized_triggers
-
-    
-
-
-
-
 
 def check_audio_markers(markers):
     """
@@ -239,7 +185,6 @@ def check_audio_markers(markers):
     result = len(incomplete_indices) == 0  
 
     return result, incomplete_indices
-
 
 def calculate_time_gaps(time_array, time_interval):
 

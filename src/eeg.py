@@ -3,8 +3,9 @@ import pdb
 import numpy as np
 from src.utils import load_edf_file
 from src.utils import normalize_eeg_triggers
-from src.utils import clean_eeg_trigger_points
+from src.utils import eeg_events_mapping
 from src.utils import correct_eeg_triggers
+from src.utils import eeg_transition_trigger_points
 
 def check_interruptions(raw_data, sfreq):
     print('Checking for Interruptions')
@@ -80,12 +81,10 @@ class EEG_DATA:
     def preprocess_eeg_data(self):
         self.TRIGGER_NORMALIZED = normalize_eeg_triggers(self.TRIGGERS)
         self.TRIGGERS_CORRECTED = correct_eeg_triggers(self.TRIGGER_NORMALIZED)
+        self.TRIGGER_TRANSITION_POINTS = eeg_transition_trigger_points(self.TRIGGERS_CORRECTED)
+    
+        self.EVENTS = eeg_events_mapping(self.TRIGGERS_CORRECTED, self.TRIGGER_TRANSITION_POINTS)
         pdb.set_trace()
-        self.TRIGGER_POINTS_CLEANED = clean_eeg_trigger_points(self.TRIGGER_NORMALIZED)
-        #self.EVENTS = eeg_events_mapping(self.TRIGGER_NORMALIZED, self.TRIGGER_POINTS_CLEANED)
-        
-        self.TRIGGERS_TYPES = np.unique(self.TRIGGERS)
-        #self.EVENTS = find_trigger_changes(self.TRIGGERS)
         self.INTERRUPTIONS, self.INTERRUPTIONS_CHECK = check_interruptions(
             self.RAW_DATA,
             self.SAMPLING_FREQUENCY
@@ -102,7 +101,6 @@ class EEG_DATA:
         print("Sampling Frequency:", self.SAMPLING_FREQUENCY)
         print("Trigger Data:", self.TRIGGERS)
         print("Duration:", self.DURATION)
-        print("Trigger Types:", self.TRIGGERS_TYPES)
         print("Events:", self.EVENTS)
         print("Interruptions Check:", self.INTERRUPTIONS_CHECK)
         print("Interruptions:", self.INTERRUPTIONS)
