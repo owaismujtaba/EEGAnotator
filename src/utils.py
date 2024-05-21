@@ -55,8 +55,8 @@ def find_trigger_changes(trigger_array):
     start_indices = [0] + changes.tolist()
     end_indices = changes.tolist() + [len(trigger_array)]
 
-    trigger_ranges = [(trigger_encodings(trigger_array[start_indices[i]]), start_indices[i], end_indices[i]) for i in range(len(start_indices))]
-
+    trigger_ranges = [[str(trigger_encodings(trigger_array[start_indices[i]])), str(start_indices[i]), str(end_indices[i])] for i in range(len(start_indices))]
+    trigger_ranges = [',  '.join(inner_list) for inner_list in trigger_ranges]
     return trigger_ranges
 
 

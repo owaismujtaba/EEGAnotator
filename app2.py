@@ -227,26 +227,26 @@ class MainWindow(QMainWindow):
         self.channels_button_layout = QVBoxLayout()
         self.channels_button_layout_widget = self.wrap_layout_in_widget(self.channels_button_layout)
 
-        self.channels_available_list = QListWidget()
-        self.channels_selected_list = QListWidget()
+        self.eeg_channels_available_list = QListWidget()
+        self.eeg_channels_selected_list = QListWidget()
 
-        self.channel_add_btn = QPushButton('Add >>')
-        self.channel_remove_btn = QPushButton('<< Remove')
-        self.channel_add_all_btn = QPushButton('Add All >>')
-        self.channel_remove_all_btn = QPushButton('<< Remove All')
+        self.eeg_channel_add_btn = QPushButton('Add >>')
+        self.eeg_channel_remove_btn = QPushButton('<< Remove')
+        self.eeg_channel_add_all_btn = QPushButton('Add All >>')
+        self.eeg_channel_remove_all_btn = QPushButton('<< Remove All')
 
-        self.channels_button_layout.addWidget(self.channel_add_btn)
-        self.channels_button_layout.addWidget(self.channel_remove_btn)
-        self.channels_button_layout.addWidget(self.channel_add_all_btn)
-        self.channels_button_layout.addWidget(self.channel_remove_all_btn)
+        self.channels_button_layout.addWidget(self.eeg_channel_add_btn)
+        self.channels_button_layout.addWidget(self.eeg_channel_remove_btn)
+        self.channels_button_layout.addWidget(self.eeg_channel_add_all_btn)
+        self.channels_button_layout.addWidget(self.eeg_channel_remove_all_btn)
         self.channels_button_layout.addStretch()
 
         self.channels_button_widget = QWidget()
         self.channels_button_widget.setLayout(self.channels_button_layout)
 
-        self.channels_list_layout.addWidget(self.channels_available_list)
+        self.channels_list_layout.addWidget(self.eeg_channels_available_list)
         self.channels_list_layout.addWidget(self.channels_button_widget)
-        self.channels_list_layout.addWidget(self.channels_selected_list)
+        self.channels_list_layout.addWidget(self.eeg_channels_selected_list)
 
         self.left_layout_section_7.addWidget(self.channels_list_layout_widget)
         
@@ -380,7 +380,9 @@ class MainWindow(QMainWindow):
         self.eeg_n_bad_channels_text.setText(str(len(self.eeg_data.bad_channels)))
         self.eeg_n_channels_text.setText(str(self.eeg_data.n_channels))
         self.eeg_interruptions_text.setText(str(self.eeg_data.interruptions_check))
-
+        self.eeg_channels_available_list.addItems(self.eeg_data.channel_names)
+        self.eeg_bad_channels_cbox.addItems(self.eeg_data.bad_channels)
+        self.eeg_events_cbox.addItems(self.eeg_data.events)
 
     def on_load_finished_audio(self, audio_data):
         self.audio_data = audio_data
