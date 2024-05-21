@@ -1,7 +1,7 @@
 import numpy as np
 import pyxdf
 import mne
-import numpy as np
+import pdb
 
 def find_start_block_saying_time_stamp(events):
     for i, item in enumerate(events):
@@ -9,17 +9,56 @@ def find_start_block_saying_time_stamp(events):
             return i, item[1], item[2]
     return None
 
+def correct_eeg_triggers(triggers):
+    """
+    Corrects a list of EEG triggers by mapping them to the nearest valid code
+    from a predefined set of correct codes.
+
+    Parameters:
+    triggers (list of int): A list of integer trigger codes to be corrected.
+
+    Returns:
+    list of int: A list of corrected trigger codes, where each input trigger
+                 is either directly mapped if it exists in the correct codings,
+                 or mapped to the nearest valid code if it does not.
+    """
+
+    correct_codings = {
+        255: 255, 224: 224, 192: 192, 160: 160,
+        128: 128, 96: 96, 64: 64, 32: 32, 16: 16, 8: 8
+    }
+
+    valid_codes = sorted(correct_codings.keys())
+
+    max_trigger = max(valid_codes)
+    nearest_code_map = {}
+
+    for i in range(max_trigger + 1):
+        nearest_code = min(valid_codes, key=lambda x: abs(x - i))
+        nearest_code_map[i] = correct_codings[nearest_code]
+
+    corrected_triggers = []
+    for trigger in triggers:
+        if trigger in nearest_code_map:
+            corrected_triggers.append(nearest_code_map[trigger])
+        else:
+            corrected_triggers.append(nearest_code_map[max_trigger])
+    pdb.set_trace()
+    return corrected_triggers
+
 
 def trigger_encodings(code):
     """
         Converts trigger codes into their corresponding marker names based on a predefined dictionary.
+        If the exact code is not found, the closest code is used.
+        
         Parameters:
             code (int): Trigger code to be converted.
+        
         Returns:
-            str: Corresponding marker name if code is found in the dictionary, otherwise 'UNKNOWN_CODE'.
+            str: Corresponding marker name if code is found in the dictionary, otherwise the closest code's marker name.
     """
 
-    # Dictionary mapping trigger codes to marker names
     marker_names = {
         255: 'START_READ_WORD',
         224: 'END_READ_WORD',
@@ -34,31 +73,92 @@ def trigger_encodings(code):
     }
 
     marker_name = marker_names.get(code)
+    
     if marker_name:
         return marker_name
-    else:
-        return 'UNKNOWN_CODE'
+    
+    closest_code = min(marker_names.keys(), key=lambda k: abs(k - code))
+    closest_marker_name = marker_names[closest_code]
+    
+    return closest_marker_name
 
-
-def find_trigger_changes(trigger_array):
+def eeg_events_mapping(trigger_values, trigger_points):
     """
-        Finds the start and end indices of each trigger along with their respective codes in an array.        Parameters:
-            trigger_array (numpy.ndarray): Array containing trigger codes.
+        Maps EEG trigger values to their corresponding start and end points.
+
+        Parameters:
+        - trigger_values (numpy.ndarray): An array of trigger values recorded during the EEG session.
+        - trigger_points (numpy.ndarray): An array of indexes of trigger values array where the trigger values change .
+
         Returns:
-            list: List of tuples, each containing the marker name, start index, and end index of a trigger range.
+        - List[str]: A list of strings, each representing an event with its start and end points.
     """
+    events_start_end = []
 
-    changes = np.where(np.diff(trigger_array) != 0)[0] + 1
+    for i in range(trigger_points.shape[0] - 1):
+        event = trigger_encodings(trigger_values[i])
+        start = trigger_points[i]
+        end = trigger_points[i + 1]
+        event_string = f"{event} {start} {end}"
+        events_start_end.append(event_string)
 
-    start_indices = [0] + changes.tolist()
-    end_indices = changes.tolist() + [len(trigger_array)]
+    return events_start_end 
 
-    trigger_ranges = [(trigger_encodings(trigger_array[start_indices[i]]), start_indices[i], end_indices[i]) for i in range(len(start_indices))]
+def clean_eeg_trigger_points(trigger_array):
+    """
+        Clean trigger points in an EEG signal.
 
-    return trigger_ranges
+        Args:
+            trigger_array (numpy.ndarray): Array containing trigger values.
+
+        Returns:
+            numpy.ndarray: Array containing cleaned trigger points.
+    """
+    
+    transition_points_indexes = np.where(np.diff(trigger_array) != 0)[0] + 1
+    transition_points_indexes = np.array([0] + transition_points_indexes.tolist())
+    
+    previous_group_value = trigger_array[0]
+    indexes_with_less_group_width = []
+    for index in range(2, transition_points_indexes.shape[0]-1):
+        start = transition_points_indexes[index-1]
+        end = transition_points_indexes[index]
+
+        if end - start < 15:
+            
+            trigger_array[start:end] = previous_group_value
+            indexes_with_less_group_width.append(index-1)
+            
+        previous_group_value = trigger_array[start]
+        
+    pdb.set_trace()
+    transition_points_without_less_width = np.delete(transition_points_indexes, indexes_with_less_group_width)
+    
+    transition_points_indexes = np.where(np.diff(trigger_array) != 0)[0] + 1
+    transition_points_indexes = np.array([0] + transition_points_indexes.tolist())
+
+    return transition_points_without_less_width
+
+def eeg_clean_trigger_points1(trigger_array):
+    """
+        Clean trigger points in an EEG signal.
+
+        Args:
+            trigger_array (numpy.ndarray): Array containing trigger values.
+
+        Returns:
+            numpy.ndarray: Array containing cleaned trigger points.
+    """
+    transition_points_indexes = np.where(np.diff(trigger_array) != 0)[0] + 1
+    transition_points_indexes = np.array([0] + transition_points_indexes.tolist())
+    
+    less_width_indices = np.where(np.diff(transition_points_indexes) < 20)[0] + 1
+    transition_points_without_less_width = np.delete(transition_points_indexes, less_width_indices)
+   
+    return transition_points_without_less_width
 
 
-def normalize_triggers(trigger_values):
+def normalize_eeg_triggers(trigger_values):
     """
         Normalizes a trigger value using the formula:
         normalized_value = (trigger_value - trigger_min) / (trigger_max - trigger_min)
@@ -67,15 +167,14 @@ def normalize_triggers(trigger_values):
         Returns:
             numpy.ndarray: Array of normalized trigger values rounded to the nearest integer.
     """
-    
+    trigger_values = trigger_values*-1
     trigger_min = np.min(trigger_values)
     trigger_max = np.max(trigger_values)
     
-    normalized_array = (trigger_values - trigger_min) / (trigger_max - trigger_min) * 255
+    normalized_triggers = (trigger_values - trigger_min) / (trigger_max - trigger_min) * 255
+    normalized_triggers = np.round(normalized_triggers).astype(int)
     
-    rounded_array = np.round(normalized_array).astype(int)
-    
-    return rounded_array
+    return normalized_triggers
 
     
 

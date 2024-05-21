@@ -1,68 +1,43 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QFileDialog
-from src.GUI.utils import upload_file, load_edf
-import config
-import mne
+def adjust_triggers(trigger_array):
+    # Initialize variables
+    n = len(trigger_array)
+    if n == 0:
+        return trigger_array
+    
+    # Create a copy of the array to store results
+    result = trigger_array.copy()
+    
+    # Track the start index of the current group
+    group_start = 0
 
-def create_edf_block():
-    edf_block = QWidget()
-    edf_layout = QVBoxLayout()
-    edf_block.setLayout(edf_layout)
-    
-    label = QLabel('EEG')
-    edf_layout.addWidget(label)
-    
-    upload_button = QPushButton('Upload EDF File')
-    upload_button.clicked.connect(lambda: upload_and_load_edf(edf_layout))
-    edf_layout.addWidget(upload_button)
-    
-    return edf_block
-
-def create_xdf_block():
-    xdf_block = QWidget()
-    xdf_layout = QVBoxLayout()
-    xdf_block.setLayout(xdf_layout)
-    
-    label = QLabel('AUDIO')
-    xdf_layout.addWidget(label)
-    
-    upload_button = QPushButton('Upload XDF File')
-    upload_button.clicked.connect(upload_file)  # Assuming upload_file handles XDF files too
-    xdf_layout.addWidget(upload_button)
-    
-    submit_button = QPushButton('Submit')
-    # Here you can add functionality for the Submit button if needed
-    xdf_layout.addWidget(submit_button)
-    
-    return xdf_block
-
-def upload_and_load_edf(layout):
-    file_path, _ = QFileDialog.getOpenFileName(None, "Select EDF file", "", "EDF files (*.edf)")
-    if file_path:
-        raw_eeg = load_edf(file_path)
-        fig = raw_eeg.plot(block=False)
-        layout.addWidget(fig)
-
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
+    while group_start < n:
+        # Find the end of the current group
+        group_end = group_start
+        while group_end < n and trigger_array[group_end] == trigger_array[group_start]:
+            group_end += 1
         
-        self.setWindowTitle('DeepRESTORE')
-        self.setGeometry(100, 100, 800, 600)  # Set window size and position
+        # Calculate the width of the current group
+        group_width = group_end - group_start
         
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        layout = QHBoxLayout()
-        central_widget.setLayout(layout)
+        # If the width is less than 20, modify the values
+        if group_width < 20:
+            # If there is a previous group, use its value, otherwise use the next group's value
+            if group_start > 0:
+                previous_value = trigger_array[group_start - 1]
+            elif group_end < n:
+                previous_value = trigger_array[group_end]
+            else:
+                previous_value = trigger_array[group_start]  # edge case for single group array
+            
+            for i in range(group_start, group_end):
+                result[i] = previous_value
         
-        edf_block = create_edf_block()
-        xdf_block = create_xdf_block()
-        
-        layout.addWidget(edf_block)
-        layout.addWidget(xdf_block)
+        # Move to the next group
+        group_start = group_end
+    
+    return result
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    main_window = MainWindow()
-    main_window.show()
-    sys.exit(app.exec_())
+# Example usage
+trigger_array = [1, 1, 1, 2, 2, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4, 4, 4]
+adjusted_array = adjust_triggers(trigger_array)
+print(adjusted_array)

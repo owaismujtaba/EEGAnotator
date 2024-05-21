@@ -1,18 +1,15 @@
-import mne
 import config
 import pdb
 import numpy as np
-from datetime import  timedelta
 from src.utils import load_edf_file
-from src.utils import convert_unix_timestamps_to_datetime
-from src.utils import normalize_triggers, find_trigger_changes
-from src.utils import find_start_block_saying_time_stamp
+from src.utils import normalize_eeg_triggers
+from src.utils import clean_eeg_trigger_points
+from src.utils import correct_eeg_triggers
 
 def check_interruptions(raw_data, sfreq):
     print('Checking for Interruptions')
     times = raw_data.times
     interruptions_check = True
-    
     time_diff = np.diff(times)
     interruptions_indices = np.where(time_diff > (1 / sfreq) * config.INTERRUPTION_INTERVAL_EEG)[0]
 
@@ -28,9 +25,7 @@ def check_interruptions(raw_data, sfreq):
     
     return time_gaps, interruptions_check
 
-
-
-class EEG:
+class EEG_DATA:
     """
     A class to represent EEG (Electroencephalogram) data.
     """
@@ -56,53 +51,61 @@ class EEG:
                 - events (numpy.ndarray): Events based on trigger changes.
                 - times (numpy.ndarray): Timestamps converted to datetime format.
         """
-        self.filepath = filepath_edf 
+        
+        self.FILEPATH = filepath_edf 
         self.EXPERIMENT_START = None
-        self.raw_data = load_edf_file(filepath_edf)
-        self.n_channels = self.raw_data.info['nchan']
-        self.bad_channels = self.raw_data.info['bads']
-        self.channel_names = self.raw_data.ch_names
-        self.sampling_frequency = self.raw_data.info['sfreq']
-        self.triggers = self.raw_data['TRIG'][0][0]
-        self.interruptions_check = False
-        self.interruptions = None
-        self.start_time = self.raw_data.info['meas_date']
-        self.duration = self.raw_data.n_times / self.sampling_frequency
-        self.end_time = self.start_time + timedelta(seconds=self.duration)
+        self.RAW_DATA = None
+        self.N_CHANNELS = None
+        self.BAD_CHANNELS = None
+        self.CHANNEL_NAMES = None
+        self.SAMPLING_FREQUENCY = None
+        self.TRIGGERS = None
+        self.DURATION = None
+        self.INTERRUPTIONS_CHECK = False
+        self.INTERRUPTIONS = None
+        
+        self.load_eeg_data()
+        self.preprocess_eeg_data()
 
-        self.triggers = normalize_triggers(self.triggers)
-        self.triggers_types = np.unique(self.triggers)
-        self.events = find_trigger_changes(self.triggers)
-        self.interruptions, self.interruptions_check = check_interruptions(
-            self.raw_data,
-            self.sampling_frequency
+    
+    def load_eeg_data(self):
+        self.RAW_DATA = load_edf_file(self.FILEPATH)
+        self.N_CHANNELS = self.RAW_DATA.info['nchan']
+        self.BAD_CHANNELS = self.RAW_DATA.info['bads']
+        self.CHANNEL_NAMES = self.RAW_DATA.ch_names
+        self.SAMPLING_FREQUENCY = self.RAW_DATA.info['sfreq']
+        self.TRIGGERS = self.RAW_DATA['TRIG'][0][0]
+        self.DURATION = self.RAW_DATA.n_times / self.SAMPLING_FREQUENCY
+
+    def preprocess_eeg_data(self):
+        self.TRIGGER_NORMALIZED = normalize_eeg_triggers(self.TRIGGERS)
+        self.TRIGGERS_CORRECTED = correct_eeg_triggers(self.TRIGGER_NORMALIZED)
+        pdb.set_trace()
+        self.TRIGGER_POINTS_CLEANED = clean_eeg_trigger_points(self.TRIGGER_NORMALIZED)
+        #self.EVENTS = eeg_events_mapping(self.TRIGGER_NORMALIZED, self.TRIGGER_POINTS_CLEANED)
+        
+        self.TRIGGERS_TYPES = np.unique(self.TRIGGERS)
+        #self.EVENTS = find_trigger_changes(self.TRIGGERS)
+        self.INTERRUPTIONS, self.INTERRUPTIONS_CHECK = check_interruptions(
+            self.RAW_DATA,
+            self.SAMPLING_FREQUENCY
         )
-
-        self.times = convert_unix_timestamps_to_datetime(self.raw_data.times)
-
-        self.find_start_block_saying_time_stamp()
-
-    def find_start_block_saying_time_stamp(self):
-        for i, item in enumerate(self.events):
-            if item[0] == 'START_BLOCK_SAYING':
-                self.EXPERIMENT_START = item[1]
-                break
         
     def print_info(self):
         """
         Print information about the EEG data.
         """
-        print("File Path:", self.filepath)
-        print("Number of Channels:", self.n_channels)
-        print("Bad Channels:", self.bad_channels)
-        print("Channel Names:", self.channel_names)
-        print("Sampling Frequency:", self.sampling_frequency)
-        print("Trigger Data:", self.triggers)
-        print("Start Time:", self.start_time)
-        print("Duration:", self.duration)
-        print("End Time:", self.end_time)
-        print("Trigger Types:", self.triggers_types)
-        print("Events:", self.events)
-        print("Interruptions Check:", self.interruptions_check)
-        print("Interruptions:", self.interruptions)
-        print("Timestamps:", self.times)
+        print("File Path:", self.FILEPATH)
+        print("Number of Channels:", self.N_CHANNELS)
+        print("Bad Channels:", self.BAD_CHANNELS)
+        print("Channel Names:", self.CHANNEL_NAMES)
+        print("Sampling Frequency:", self.SAMPLING_FREQUENCY)
+        print("Trigger Data:", self.TRIGGERS)
+        print("Duration:", self.DURATION)
+        print("Trigger Types:", self.TRIGGERS_TYPES)
+        print("Events:", self.EVENTS)
+        print("Interruptions Check:", self.INTERRUPTIONS_CHECK)
+        print("Interruptions:", self.INTERRUPTIONS)
+        print("Timestamps:", self.TIMES)
+
+
