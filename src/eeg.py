@@ -53,7 +53,6 @@ class EEG_DATA:
         """
         
         self.FILEPATH = filepath_edf 
-        self.EXPERIMENT_START = None
         self.RAW_DATA = None
         self.N_CHANNELS = None
         self.BAD_CHANNELS = None
