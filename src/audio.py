@@ -32,7 +32,6 @@ class AUDIO_DATA:
         self.FILEPATH = filepath_xdf
         self.STREAMS = None
         self.SAMPLING_FREQUENCY = None
-        self.MARKER_TIMES = None
         self.N_MARKERS = None
         self.MARKERS = None
         self.START_TIME_MARKER = None
@@ -46,19 +45,7 @@ class AUDIO_DATA:
         self.MARKER_TIMES_ORIGINAL = None
         self.MARKER_TIMES_REAL = None
         self.MARKER_TIME_GAPS = None
-        
-        
-        
-
-        
-        
-        
-        self.MARKER_TIME_GAPS, self.MARKER_TIME_GAPS_ITEMS = calculate_time_gaps(
-            self.MARKER_TIMES, 
-            config.GAP_INTERVAL_AUDIO_MARKER
-        )
-        
-        self.N_GAPS = len(self.MARKER_TIME_GAPS)
+        self.N_GAPS = None
 
         self.load_audio_data()
         self.preprocess_audio_data()
@@ -69,16 +56,19 @@ class AUDIO_DATA:
         self.STREAMS, header = load_xdf_file(self.FILEPATH)
         self.SAMPLING_FREQUENCY = self.STREAMS[1]['info']['effective_srate']
         self.MARKERS = self.STREAMS[0]['time_series']
-        self.START_TIME_MARKER = self.MARKER_TIMES[0]
-        self.END_TIME_MARKER = self.MARKER_TIMES[-1]
         self.MARKER_TIMES_ORIGINAL = self.STREAMS[0]['time_stamps']
-        
         self.AUDIO = self.STREAMS[1]['time_series']
-        self.MARKER_DURATION = self.END_TIME_MARKER - self.START_TIME_MARKER
-        self.AUDIO_START_TIME = self.AUDIO_TIMES[0]
-        self.AUDIO_END_TIME = self.AUDIO_TIMES[-1]
-        self.AUDIO_DURATION = self.AUDIO_END_TIME - self.AUDIO_START_TIME
         self.AUDIO_TIMES_ORIGINAL = self.STREAMS[1]['time_stamps']
+
+        self.START_TIME_MARKER = self.MARKER_TIMES_ORIGINAL[0]
+        self.END_TIME_MARKER = self.MARKER_TIMES_ORIGINAL[-1]  
+        self.MARKER_DURATION = self.END_TIME_MARKER - self.START_TIME_MARKER
+        
+        self.AUDIO_START_TIME = self.AUDIO_TIMES_ORIGINAL[0]
+        self.AUDIO_END_TIME = self.AUDIO_TIMES_ORIGINAL[-1]
+        self.AUDIO_DURATION = self.AUDIO_END_TIME - self.AUDIO_START_TIME
+        self.N_MARKERS = len(self.MARKERS)
+        
         
     def preprocess_audio_data(self):
         self.MARKER_TIMES_REAL = convert_unix_timestamps_to_datetime(
@@ -90,9 +80,11 @@ class AUDIO_DATA:
                                         )
         
         self.MARKER_TIME_GAPS, self.MARKER_TIME_GAPS_ITEMS = calculate_time_gaps(
-                                            self.MARKER_TIMES, 
+                                            self.MARKER_TIMES_ORIGINAL, 
                                             config.GAP_INTERVAL_AUDIO_MARKER
                                         )
+
+        self.N_GAPS_MARKERS = len(self.MARKER_TIME_GAPS)
 
     def print_info(self):
         print('***************************Audio File Info***************************')

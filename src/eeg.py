@@ -62,6 +62,7 @@ class EEG_DATA:
         self.DURATION = None
         self.INTERRUPTIONS_CHECK = False
         self.INTERRUPTIONS = None
+        self.EVENTS = None
         
         self.load_eeg_data()
         self.preprocess_eeg_data()

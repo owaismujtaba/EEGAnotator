@@ -19,16 +19,16 @@ def trigger_encodings(code):
     """
 
     marker_names = {
-        255: 'START_READ_WORD',
-        224: 'END_READ_WORD',
-        192: 'START_SAY_WORD',
-        160: 'END_SAY_WORD',
-        128: 'START_BLOCK_SAYING',
-        96: 'START_BLOCK_THINKING',
+        255: 'StartReading',
+        224: 'EndReading',
+        192: 'StartSaying',
+        160: 'EndSaying',
+        128: 'StartBlockSaying',
+        96: 'StartBlockThinking',
         64: 'EXPERIMENT_RESTART',
-        32: 'EXPERIMENT_REST',
-        16: 'EXPERIMENT_START',
-        8: 'EXPERIMENT_END'
+        32: 'ExperimentResting',
+        16: 'ExperimentStarted',
+        8: 'ExperimentEnded'
     }
 
     marker_name = marker_names.get(code)
@@ -194,7 +194,7 @@ def check_audio_markers(markers):
     return result, incomplete_indices
 
 def calculate_time_gaps(time_array, time_interval):
-
+    
     differences = np.diff(time_array).astype('int')
     indices = np.where(differences > time_interval)[0]
 
