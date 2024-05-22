@@ -360,7 +360,15 @@ class MainWindow(QMainWindow):
 
         self.audio_select_file_button.clicked.connect(self.browse_xdf_file)
         self.audio_load_file_button.clicked.connect(self.load_xdf_file)
-    
+
+        self.visualize_eeg_btn.clicked.connect(self.visualize_eeg_channels)
+
+
+    def visualize_eeg_channels(self):
+        selected_channels = [self.eeg_channels_selected_list.item(i).text() for i in range(self.eeg_channels_selected_list.count())]
+        eeg_data_selected_channels = self.eeg_data.RAW_DATA.pick_channels(selected_channels)
+        eeg_data_selected_channels.plot(duration=60,show_options=True)
+        
     def add_all_items(self):
             while self.eeg_channels_available_list.count() > 0:
                 item = self.eeg_channels_available_list.takeItem(0)
@@ -436,8 +444,8 @@ class MainWindow(QMainWindow):
         self.eeg_events_cbox.addItems(events)
 
     def update_audio_info(self):
+        #self.audio_duration_text.setText(str(self.audio_data.))
         pass
-
     def on_load_finished_audio(self, audio_data):
         self.audio_data = audio_data
         self.update_audio_info()

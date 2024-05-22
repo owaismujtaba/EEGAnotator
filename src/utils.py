@@ -3,8 +3,29 @@ import pyxdf
 import mne
 import pdb
 
+def map_action_words_eeg_data_indexes(audio_markers, eeg_events):
+    
+    track_events = 0
 
+    action_word_eeg_data_slices_indexes = []
 
+    for i in range(len(audio_markers)):
+
+        audio_marker = audio_markers[i][0]
+        audio_marker_items = audio_marker.split(':')
+        if len(audio_marker_items) > 1:
+            action, word = audio_marker_items
+            for j in range(track_events , len(eeg_events)):
+                event = eeg_events[j][0]
+                if action == event:
+                    track_events = j + 1
+                    eeg_start_index = eeg_events[j][1]
+                    eeg_end_index = eeg_events[j][2]
+                    eeg_duration = eeg_events[j][3]
+                    action_word_eeg_data_slices_indexes.append([action, word, eeg_start_index, eeg_end_index, eeg_duration])
+                    break
+
+    return action_word_eeg_data_slices_indexes
 
 def trigger_encodings(code):
     """
