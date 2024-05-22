@@ -213,7 +213,7 @@ class MainWindow(QMainWindow):
         self.eeg_bad_channels_cbox.setStyleSheet(combobox_style)
         self.eeg_events_cbox = QComboBox()
         self.eeg_events_cbox.addItem('Event Name: Start: End: Duration')
-        self.eeg_events_cbox.setStyleSheet(text_box_style)
+        self.eeg_events_cbox.setStyleSheet(combobox_style)
 
         self.left_layout_section_6.addWidget(self.eeg_bad_channels_cbox)
         self.left_layout_section_6.addWidget(self.eeg_events_cbox)
@@ -295,10 +295,13 @@ class MainWindow(QMainWindow):
         self.audio_file_name_textbox.setStyleSheet(text_box_style)
         self.audio_select_file_button = QPushButton('Select File')
         self.audio_select_file_button.setStyleSheet(button_style)
-
+        self.audio_load_file_button = QPushButton('Load File')
+        self.audio_load_file_button.setStyleSheet(button_style)
+        
         self.right_layout_section_2.addWidget(self.audio_file_name_label)
         self.right_layout_section_2.addWidget(self.audio_file_name_textbox)
         self.right_layout_section_2.addWidget(self.audio_select_file_button)
+        self.right_layout_section_2.addWidget(self.audio_load_file_button)
 
         #***********************************ROW 3***********************************
         self.audio_sampling_freq_label = QLabel('Sampling Frequency :')
@@ -327,10 +330,11 @@ class MainWindow(QMainWindow):
         self.audio_markers_cbox = QComboBox()
         self.audio_markers_cbox.setStyleSheet(combobox_style)
         self.audio_markers_cbox.addItem('Markers in the Audio')
-
         self.audio_duration_text = QLineEdit('')
         self.audio_duration_text.setStyleSheet(text_box_style)
         self.audio_duration_text.setReadOnly(True)
+
+        
 
         self.right_layout_section_4.addWidget(self.audio_n_markers_label)
         self.right_layout_section_4.addWidget(self.audio_duration_text)
@@ -353,6 +357,9 @@ class MainWindow(QMainWindow):
         self.eeg_channel_remove_btn.clicked.connect(self.remove_item)
         self.eeg_channel_remove_all_btn.clicked.connect(self.remove_all_items)
         self.eeg_channel_add_all_btn.clicked.connect(self.add_all_items)
+
+        self.audio_select_file_button.clicked.connect(self.browse_xdf_file)
+        self.audio_load_file_button.clicked.connect(self.load_xdf_file)
     
     def add_all_items(self):
             while self.eeg_channels_available_list.count() > 0:
@@ -386,6 +393,21 @@ class MainWindow(QMainWindow):
             self.edf_file_name = get_file_name_from_path(file_path)
             self.eeg_file_name_textbox.setText(self.edf_file_name)
            
+    def browse_xdf_file(self):
+        file_dialog = QFileDialog()
+        file_path, _ = file_dialog.getOpenFileName(self, "Open XDF File", "", "XDF Files (*.xdf)")
+        if file_path:
+            self.xdf_file_path = file_path
+            self.xdf_file_name = get_file_name_from_path(file_path)
+            self.audio_file_name_textbox.setText(self.xdf_file_name)
+    
+    def load_xdf_file(self):
+        if self.xdf_file_path:
+            self.waiting_msg_box = self.show_waiting_message("Loading XDF data. Please wait...")
+            self.load_thread_eeg = LoadAudioThread(self.xdf_file_path)
+            self.load_thread_eeg.finished.connect(self.on_load_finished_audio)
+            self.load_thread_eeg.error.connect(self.on_load_error)
+            self.load_thread_eeg.start()
 
     def load_edf_file(self):
         if self.edf_file_path:
@@ -412,6 +434,9 @@ class MainWindow(QMainWindow):
 
         events = convert_lists_to_strings(self.eeg_data.EVENTS)
         self.eeg_events_cbox.addItems(events)
+
+    def update_audio_info(self):
+        pass
 
     def on_load_finished_audio(self, audio_data):
         self.audio_data = audio_data
