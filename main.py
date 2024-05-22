@@ -1,14 +1,12 @@
-from utils import DATA
-import config
 import pdb
 
-xdf_path = config.AUDIO_FILE_PATH
-edf_path = config.EEG_FILE_PATH
+from src.eeg import EEG_DATA
+from src.audio import AUDIO_DATA
 
-
-
-#data = DATA(filepath_xdf=xdf_path, filepath_edf=edf_path)
-#data.print_info()
+edf_path = 'C:\DeepRESTORE\EEGAnotator\Data\F10\PictureNaming\eeg\\f10.edf'
+xdf_path = 'C:\DeepRESTORE\EEGAnotator\Data\F10\PictureNaming\\xdf\\f10.xdf'
+eeg = EEG_DATA(filepath_edf=edf_path)
+audio = AUDIO_DATA(xdf_path)
 
 
 
