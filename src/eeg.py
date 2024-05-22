@@ -6,7 +6,6 @@ from src.utils import normalize_eeg_triggers
 from src.utils import eeg_events_mapping
 from src.utils import correct_eeg_triggers
 from src.utils import eeg_transition_trigger_points
-
 def check_interruptions(raw_data, sfreq):
     print('Checking for Interruptions')
     times = raw_data.times
@@ -81,10 +80,10 @@ class EEG_DATA:
     def preprocess_eeg_data(self):
         self.TRIGGER_NORMALIZED = normalize_eeg_triggers(self.TRIGGERS)
         self.TRIGGERS_CORRECTED = correct_eeg_triggers(self.TRIGGER_NORMALIZED)
-        self.TRIGGER_TRANSITION_POINTS = eeg_transition_trigger_points(self.TRIGGERS_CORRECTED)
+        self.TRIGGER_TRANSITION_POINTS_INDEX = eeg_transition_trigger_points(self.TRIGGERS_CORRECTED)
     
-        self.EVENTS = eeg_events_mapping(self.TRIGGERS_CORRECTED, self.TRIGGER_TRANSITION_POINTS)
-        pdb.set_trace()
+        self.EVENTS = eeg_events_mapping(self.TRIGGERS_CORRECTED, self.TRIGGER_TRANSITION_POINTS_INDEX)
+        #pdb.set_trace()
         self.INTERRUPTIONS, self.INTERRUPTIONS_CHECK = check_interruptions(
             self.RAW_DATA,
             self.SAMPLING_FREQUENCY
@@ -104,6 +103,6 @@ class EEG_DATA:
         print("Events:", self.EVENTS)
         print("Interruptions Check:", self.INTERRUPTIONS_CHECK)
         print("Interruptions:", self.INTERRUPTIONS)
-        print("Timestamps:", self.TIMES)
+
 
 

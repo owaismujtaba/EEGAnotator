@@ -41,35 +41,42 @@ def trigger_encodings(code):
     
     return closest_marker_name
 
-def eeg_events_mapping(trigger_values, trigger_points):
+def eeg_events_mapping(trigger_array, trigger_points):
     """
         Maps EEG trigger values to their corresponding start and end points.
 
         Parameters:
         - trigger_values (numpy.ndarray): An array of trigger values recorded during the EEG session.
-        - trigger_points (numpy.ndarray): An array of indexes of trigger values array where the trigger values change .
+        - trigger_points (numpy.ndarray): An array of indexes of trigger values array where the trigger values change.
 
         Returns:
-        - List[str]: A list of strings, each representing an event with its start and end points.
+        - List[str]: A list of strings, each representing an event with its start and end points and duration.
     """
     events_start_end = []
 
     for i in range(trigger_points.shape[0] - 1):
-        event = trigger_encodings(trigger_values[i])
+        
         start = trigger_points[i]
         end = trigger_points[i + 1]
-        event_string = f"{event} {start} {end}"
+        event = trigger_encodings(trigger_array[start])
+        
+        #event_string = f"{event} {start} {end}"
         if end-start < 25:
             continue
-        events_start_end.append(event_string)
+        events_start_end.append([event, start, end, end-start])
         
 
     return events_start_end 
 
 
+
 def eeg_transition_trigger_points(trigger_array):
-    transition_points_indexes = np.where(np.diff(trigger_array) != 0)[0] + 1
-    transition_points_indexes = np.array([0] + transition_points_indexes.tolist())
+
+    difference_array = np.where(np.diff(trigger_array) > 0)[0] + 1
+    
+    transition_points_indexes = np.array([0] + difference_array.tolist())
+
+    #pdb.set_trace()
   
     return transition_points_indexes
  
