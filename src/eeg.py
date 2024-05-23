@@ -6,6 +6,9 @@ from src.utils import normalize_eeg_triggers
 from src.utils import eeg_events_mapping
 from src.utils import correct_eeg_triggers
 from src.utils import eeg_transition_trigger_points
+from src.utils import convert_eeg_unix_timestamps_to_datetime
+
+
 def check_interruptions(raw_data, sfreq):
     print('Checking for Interruptions')
     times = raw_data.times
@@ -63,6 +66,8 @@ class EEG_DATA:
         self.INTERRUPTIONS_CHECK = False
         self.INTERRUPTIONS = None
         self.EVENTS = None
+        self.START_TIME = None
+        self.TIME_STAMPS = None
         
         self.load_eeg_data()
         self.preprocess_eeg_data()
@@ -72,18 +77,24 @@ class EEG_DATA:
         self.RAW_DATA = load_edf_file(self.FILEPATH)
         self.N_CHANNELS = self.RAW_DATA.info['nchan']
         self.BAD_CHANNELS = self.RAW_DATA.info['bads']
+        self.START_TIME = self.RAW_DATA.info['meas_date']
         self.CHANNEL_NAMES = self.RAW_DATA.ch_names
         self.SAMPLING_FREQUENCY = self.RAW_DATA.info['sfreq']
         self.TRIGGERS = self.RAW_DATA['TRIG'][0][0]
         self.DURATION = self.RAW_DATA.n_times / self.SAMPLING_FREQUENCY
+        self.TIME_STAMPS = self.RAW_DATA.times
 
     def preprocess_eeg_data(self):
+        self.TIME_STAMPS = convert_eeg_unix_timestamps_to_datetime(self.TIME_STAMPS, self.START_TIME)
         self.TRIGGER_NORMALIZED = normalize_eeg_triggers(self.TRIGGERS)
         self.TRIGGERS_CORRECTED = correct_eeg_triggers(self.TRIGGER_NORMALIZED)
         self.TRIGGER_TRANSITION_POINTS_INDEX = eeg_transition_trigger_points(self.TRIGGERS_CORRECTED)
-    
-        self.EVENTS = eeg_events_mapping(self.TRIGGERS_CORRECTED, self.TRIGGER_TRANSITION_POINTS_INDEX)
-        #pdb.set_trace()
+        self.EVENTS = eeg_events_mapping(
+            self.TRIGGERS_CORRECTED, 
+            self.TRIGGER_TRANSITION_POINTS_INDEX,
+            self.TIME_STAMPS    
+        )
+        
         self.INTERRUPTIONS, self.INTERRUPTIONS_CHECK = check_interruptions(
             self.RAW_DATA,
             self.SAMPLING_FREQUENCY
@@ -94,6 +105,7 @@ class EEG_DATA:
         Print information about the EEG data.
         """
         print("File Path:", self.FILEPATH)
+        print("Start Time:", self.START_TIME)
         print("Number of Channels:", self.N_CHANNELS)
         print("Bad Channels:", self.BAD_CHANNELS)
         print("Channel Names:", self.CHANNEL_NAMES)
