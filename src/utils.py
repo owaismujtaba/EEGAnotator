@@ -1,33 +1,63 @@
 import numpy as np
 import pyxdf
 import mne
-import datetime
 import pdb
 
 
-def map_action_words_eeg_data_indexes(audio_markers, eeg_events):
-    
-    track_events = 0
-    pdb.set_trace()
-    action_word_eeg_data_slices_indexes = []
+def find_closest_starting_point_in_eeg(eeg_events, timestamp):
+    """
+        Finds the closest starting point in EEG events to a given timestamp.
 
-    for i in range(len(audio_markers)):
+        Args:
+            - eeg_events (list of tuples): A list of EEG events where each event is represented as a tuple:
+                (action, start_time, end_time, start_index, end_index, duration).
+            - timestamp (float): The timestamp to find the closest starting point to.
 
-        audio_marker = audio_markers[i][0]
-        audio_marker_items = audio_marker.split(':')
-        if len(audio_marker_items) > 1:
-            action, word = audio_marker_items
-            for j in range(track_events , len(eeg_events)):
-                event = eeg_events[j][0]
-                if action == event:
-                    track_events = j + 1
-                    eeg_start_index = eeg_events[j][1]
-                    eeg_end_index = eeg_events[j][2]
-                    eeg_duration = eeg_events[j][3]
-                    action_word_eeg_data_slices_indexes.append([action, word, eeg_start_index, eeg_end_index, eeg_duration])
-                    break
+        Returns:
+            - close_index (int): The index of the EEG event with the closest starting time to the given timestamp.
+    """
 
-    return action_word_eeg_data_slices_indexes
+    eeg_timestamps = [item[1] for item in eeg_events]
+    diff = abs(np.array(eeg_timestamps) - timestamp)
+    close_index = np.argmin(diff)
+    return close_index
+
+
+def map_eeg_actions_to_marker_words(start_timestamp_eeg, eeg_events, markers_words_timestamps):
+    """
+        Maps EEG actions to corresponding marker words and timestamps.
+
+        Args:
+            - start_timestamp_eeg (int): The starting index for processing EEG events.
+            - eeg_events (list of tuples): A list of EEG events where each event is represented as a tuple:
+                (action, start_time, end_time, start_index, end_index, duration).
+            - markers_words_timestamps (list of tuples): A list of markers with corresponding words and timestamps,
+                where each item is represented as a tuple: (marker, word, time).
+
+            Returns:
+            - result (list of lists): A list of mapped actions to markers with their corresponding details,
+                where each item is represented as a list:
+                [marker, word, start_time, end_time, start_index, end_index, duration, time].
+
+    """
+
+    word_index = 0
+    result = []
+
+    for event in eeg_events[start_timestamp_eeg:]:
+        action, start_time, end_time, start_index, end_index, duration = event
+
+        for index in range(word_index, len(markers_words_timestamps)):
+            marker, word, time = markers_words_timestamps[index]
+
+            if action == marker:
+                result.append([marker, word, start_time, end_time, start_index, end_index, duration, time])
+                word_index = index + 1
+                break
+
+    return result
+
+
 
 
 
@@ -175,10 +205,7 @@ def load_xdf_file(filepath):
 def eeg_transition_trigger_points(trigger_array):
 
     difference_array = np.where(np.diff(trigger_array) > 0)[0] + 1
-    
     transition_points_indexes = np.array([0] + difference_array.tolist())
-
-    #pdb.set_trace()
   
     return transition_points_indexes
  
