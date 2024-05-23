@@ -4,30 +4,30 @@ import mne
 import datetime
 import pdb
 
+def find_closet_starting_point_in_eeg(eeg_events, timestamp):
+    eeg_timestamps = [item[1] for item in eeg_events]
+    diff = abs(eeg_timestamps-timestamp)
+    close_index = np.argmin(diff) 
+    return close_index
 
-def map_action_words_eeg_data_indexes(audio_markers, eeg_events):
-    
-    track_events = 0
-    pdb.set_trace()
-    action_word_eeg_data_slices_indexes = []
+def map_eeg_actions_to_marker_words(start_timestamp_eeg, eeg_events, markers_words_timestamps):
+    word_index = 0
+    result = []
+    for event in eeg_events[start_timestamp_eeg:]:
+        action , start_time, end_time, start_index, end_index ,duration = event
 
-    for i in range(len(audio_markers)):
+        for index in range(word_index, len(markers_words_timestamps)):
+            marker, word, time = markers_words_timestamps[index]
+            
 
-        audio_marker = audio_markers[i][0]
-        audio_marker_items = audio_marker.split(':')
-        if len(audio_marker_items) > 1:
-            action, word = audio_marker_items
-            for j in range(track_events , len(eeg_events)):
-                event = eeg_events[j][0]
-                if action == event:
-                    track_events = j + 1
-                    eeg_start_index = eeg_events[j][1]
-                    eeg_end_index = eeg_events[j][2]
-                    eeg_duration = eeg_events[j][3]
-                    action_word_eeg_data_slices_indexes.append([action, word, eeg_start_index, eeg_end_index, eeg_duration])
-                    break
+            if action == marker:
+                result.append([marker, word, start_time, end_time,
+                               start_index, end_index, duration, time])
+                word_index = index
+                break
 
-    return action_word_eeg_data_slices_indexes
+    return result
+
 
 
 
