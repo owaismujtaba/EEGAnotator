@@ -1,14 +1,11 @@
-from src.audio import AUDIO
-from src.eeg import EEG
+
 import numpy as np
 import pdb
+from src.utils import find_closest_starting_point_in_eeg
 
-def load_xdf_edf_data(xdf_file, edf_file):
-    data = DATA(xdf_file, edf_file)
-    return data
 
 class DATA:
-    def __init__(self, filepath_xdf, filepath_edf) -> None:
+    def __init__(self, edf_data_obj, xdf_data_object ) -> None:
         """
             Initialize an instance of the DATA class.
 
@@ -28,20 +25,49 @@ class DATA:
             - EEG: Helper class for handling EEG data.
             - AUDIO: Helper class for handling audio data.
         """
-        self.filepath_xdf = filepath_xdf
-        self.filepath_edf = filepath_edf
+        self.EEG_DATA = edf_data_obj
+        self.AUDIO_DATA = xdf_data_object
+        self.CLOSEST_POINT_BTW_EEG_EVENTS_AUDIO = find_closest_starting_point_in_eeg
 
-        # Initialize EEG data streams and print info
-        self.eeg_streams = EEG(self.filepath_edf)
+        pdb.set_trace()
 
-        # Initialize audio data streams and print info
-        self.audio_streams = AUDIO(self.filepath_xdf)
+    
+    def map_eeg_actions_to_marker_words(self, start_timestamp_eeg, eeg_events, markers_words_timestamps):
+        """
+            Maps EEG actions to corresponding marker words and timestamps.
 
-        #self.remove_gaps_by_markers_in_audio()
+            Args:
+                - start_timestamp_eeg (int): The starting index for processing EEG events.
+                - eeg_events (list of tuples): A list of EEG events where each event is represented as a tuple:
+                    (action, start_time, end_time, start_index, end_index, duration).
+                - markers_words_timestamps (list of tuples): A list of markers with corresponding words and timestamps,
+                    where each item is represented as a tuple: (marker, word, time).
+
+                Returns:
+                - result (list of lists): A list of mapped actions to markers with their corresponding details,
+                    where each item is represented as a list:
+                    [marker, word, start_time, end_time, start_index, end_index, duration, time].
+
+        """
+
+        word_index = 0
+        result = []
+
+        for event in eeg_events[start_timestamp_eeg:]:
+            action, start_time, end_time, start_index, end_index, duration = event
+
+            for index in range(word_index, len(markers_words_timestamps)):
+                marker, word, time = markers_words_timestamps[index]
+
+                if action == marker:
+                    result.append([marker, word, start_time, end_time, start_index, end_index, duration, time])
+                    word_index = index + 1
+                    break
         
-    def print_info(self):
-        self.eeg_streams.print_info()
-        #self.audio_streams.print_info()
 
-    def remove_gaps_by_markers_in_audio(self):
-        pass
+        columns = ['marker', 'word', 'start_time_eeg', 'end_time_eeg', 'start_index_eeg', 'end_index_eeg', 'duration_eeg', 'time_xdf']
+        data = pd.DataFrame(result, columns=columns)
+        data.to_csv('mappings.csv')
+        return result
+
+
