@@ -3,7 +3,7 @@ from src.utils import convert_audio_unix_timestamps_to_datetime
 from src.utils import load_xdf_file, calculate_time_gaps
 from src.utils import bundle_audio_markers_with_timestamps
 from src.utils import find_closest_starting_point_in_eeg
-from src.utils import map_eeg_actions_to_marker_words
+
 import config
 
 class AUDIO_DATA:
