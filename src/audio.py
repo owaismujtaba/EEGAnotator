@@ -81,7 +81,11 @@ class AUDIO_DATA:
         Preprocess audio data by converting timestamps and calculating time gaps between markers.
         """
         self.MARKERS_TIME_STAMPS = convert_audio_unix_timestamps_to_datetime(self.MARKERS_TIME_STAMPS)
+        self.MARKERS_START_TIME = self.MARKERS_TIME_STAMPS[0]
+        self.MARKERS_END_TIME = self.MARKERS_TIME_STAMPS[-1]
         self.AUDIO_TIME_STAMPS = convert_audio_unix_timestamps_to_datetime(self.AUDIO_TIME_STAMPS)
+        self.AUDIO_START_TIME = self.AUDIO_TIME_STAMPS[0]
+        self.AUDIO_END_TIME = self.AUDIO_TIME_STAMPS[-1]
         self.MARKERS_WORDS_TIME_STAMPS = bundle_audio_markers_with_timestamps(self.MARKERS, self.MARKERS_TIME_STAMPS)
         self.MARKER_TIME_GAPS, self.MARKER_TIME_GAPS_ITEMS = calculate_time_gaps(
             self.MARKERS_TIME_STAMPS,

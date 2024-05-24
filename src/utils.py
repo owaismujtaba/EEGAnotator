@@ -2,7 +2,7 @@ import numpy as np
 import pyxdf
 import mne
 import pdb
-
+import pandas as pd
 
 def find_closest_starting_point_in_eeg(eeg_events, timestamp):
     """
@@ -54,7 +54,11 @@ def map_eeg_actions_to_marker_words(start_timestamp_eeg, eeg_events, markers_wor
                 result.append([marker, word, start_time, end_time, start_index, end_index, duration, time])
                 word_index = index + 1
                 break
+    
 
+    columns = ['marker', 'word', 'start_time_eeg', 'end_time_eeg', 'start_index_eeg', 'end_index_eeg', 'duration_eeg', 'time_xdf']
+    data = pd.DataFrame(result, columns=columns)
+    data.to_csv('mappings.csv')
     return result
 
 

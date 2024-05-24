@@ -10,5 +10,5 @@ def convert_lists_to_strings(input_list):
         start = sublist[1]
         end = sublist[2]
         duration = sublist[3]
-        output_list.append(f"{action}: start={start}, end={end}, duration={duration}")
+        output_list.append(f"{action} ::: {start} ::: {end} ::: {duration}")
     return output_list
