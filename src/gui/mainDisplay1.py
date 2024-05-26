@@ -1,472 +1,285 @@
+import numpy as np
+import pyqtgraph as pg
+import soundfile as sf
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QHBoxLayout,
-    QVBoxLayout, QLabel, QPushButton, QComboBox, QFileDialog, 
-    QMessageBox,  QLineEdit,  QListWidget
+    QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget,
+    QListWidget, QGroupBox, QLabel, QLineEdit
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QIcon, QPalette, QBrush, QPixmap
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PyQt5.QtCore import QUrl, QTimer, pyqtSignal
+from PyQt5.QtGui import QIcon
 
-from src.gui.utils import get_file_name_from_path, convert_eeg_events_to_list
-from src.code.eeg import EEG_DATA
-from src.code.audio import AUDIO_DATA
-from src.gui.mappingDisplay1 import EEGAudioApp
-from src.utils import EEG_AUDIO_DATA
-from src.gui.utils import text_box_style, label_style, button_style, combobox_style
+from src.gui.utils import extract_widgets, button_style
+from src.gui.utils import convert_mappings_to_list_for_mainDisplay
 import config
+from scipy.io.wavfile import write
+import os
+from pathlib import Path
+import json
 
 
-class LoadEEGThread(QThread):
-    finished = pyqtSignal(object)
-    error = pyqtSignal(str)
+class EEGAudioApp(QMainWindow):
+    about_to_close = pyqtSignal()
 
-    def __init__(self, file_path):
+    def __init__(self, eeg_daudio_data):
         super().__init__()
-        self.file_path = file_path
+        self.setup_directories()
+        self.EEG_AUDIO_DATA = eeg_daudio_data
+        self.MAPPINGS = self.EEG_AUDIO_DATA.MappingEEGEventsWithMarkers
+        self.mapping_list_items = convert_mappings_to_list_for_mainDisplay(self.MAPPINGS)
 
-    def run(self):
-        try:
-            eeg_data = EEG_DATA(self.file_path)
-            self.finished.emit(eeg_data)
-        except Exception as e:
-            self.error.emit(str(e))
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_audio_plot)
+        self.audio_index = 0
 
-class LoadAudioThread(QThread):
-    finished = pyqtSignal(object)
-    error = pyqtSignal(str)
+        self.initUI()
 
-    def __init__(self, file_path):
-        super().__init__()
-        self.file_path = file_path
+    def setup_directories(self):
+        os.makedirs(config.OUTPUT_DIR_AUDIO, exist_ok=True)
+        os.makedirs(config.OUTPUT_DIR_EEG, exist_ok=True)
+        os.makedirs(config.OUTPUT_DIR_METADATA, exist_ok=True)
 
-    def run(self):
-        try:
-            audio_data = AUDIO_DATA(self.file_path)
-            self.finished.emit(audio_data)
-        except Exception as e:
-            self.error.emit(str(e))
+    def initUI(self):
+        self.main_widget = QWidget()
+        self.setCentralWidget(self.main_widget)
+        self.setWindowIcon(QIcon(config.WINDOW_ICON_PATH))
 
+        main_layout = QVBoxLayout()
+        top_layout, bottom_layout = self.create_main_layouts()
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.EEG_DATA = None
-        self.AUDIO_DATA = None
-        self.mappingDisplay = None
-        self.setWindowTitle('EEG_AUDIO_Anotator')
-        self.setGeometry(500, 300, 1200, 300)
-        self.setWindowIcon(QIcon(config.WINDOW_ICON_PATH))  
-        self.setStyleSheet("background-color: #f0f0f0;")
+        main_layout.addLayout(top_layout)
+        main_layout.addLayout(bottom_layout)
 
-        self.background_label = QLabel(self)
-        self.background_label.setGeometry(0, 0, self.width(), self.height())
-        pixmap = QPixmap(config.BACKGROUND_IMAGE_PATH)
-        self.background_label.setPixmap(pixmap)
-        self.background_label.setScaledContents(True)
-        self.background_label.setAlignment(Qt.AlignCenter)
+        self.main_widget.setLayout(main_layout)
 
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        self.main_layout = QHBoxLayout()
-        central_widget.setLayout(self.main_layout)
+        self.setWindowTitle('EEG and Audio Viewer')
+        self.setGeometry(100, 100, 1200, 600)
 
-        right_left_widget_style = "border: 2px solid #ccc; border-radius: 5px; background-color: #f0f0f0;"
+        self.mediaPlayer = QMediaPlayer()
 
+    def create_main_layouts(self):
+        top_layout = self.create_top_layout()
+        bottom_layout = self.create_bottom_layout()
+        return top_layout, bottom_layout
 
-        ##############################################################################################
-        ######################################Left Layout Sections####################################
+    def create_top_layout(self):
+        top_layout = QHBoxLayout()
 
-        self.left_layout = QVBoxLayout()
-        self.left_layout_widget = self.wrap_layout_in_widget(self.left_layout)
-        self.left_layout_widget.setStyleSheet(right_left_widget_style)
+        self.list_group_box = self.create_list_group_box()
+        self.eeg_plot_widget = self.create_eeg_plot_widget()
+        self.audio_plot_widget = self.create_audio_plot_widget()
 
+        top_layout.addWidget(self.list_group_box)
+        top_layout.addWidget(self.eeg_plot_widget)
+        top_layout.addWidget(self.audio_plot_widget)
         
-        # Left Layout Sections
-        self.left_layout_section_1 = QHBoxLayout()
-        self.left_layout_section_1_widget = self.wrap_layout_in_widget(self.left_layout_section_1)
-        self.left_layout_section_2 = QHBoxLayout()
-        self.left_layout_section_2_widget = self.wrap_layout_in_widget(self.left_layout_section_2)
-        self.left_layout_section_3 = QHBoxLayout()
-        self.left_layout_section_3_widget = self.wrap_layout_in_widget(self.left_layout_section_3)
-        self.left_layout_section_4 = QHBoxLayout()
-        self.left_layout_section_4_widget = self.wrap_layout_in_widget(self.left_layout_section_4)
-        self.left_layout_section_4_2= QHBoxLayout()
-        self.left_layout_section_4_2_widget = self.wrap_layout_in_widget(self.left_layout_section_4_2)
-        self.left_layout_section_5 = QHBoxLayout()
-        self.left_layout_section_5_widget = self.wrap_layout_in_widget(self.left_layout_section_5)
-        self.left_layout_section_6 = QHBoxLayout()
-        self.left_layout_section_6_widget = self.wrap_layout_in_widget(self.left_layout_section_6)
-        self.left_layout_section_7 = QVBoxLayout()
-        self.left_layout_section_7_widget = self.wrap_layout_in_widget(self.left_layout_section_7)
-        self.left_layout_section_8 = QVBoxLayout()
-        self.left_layout_section_8_widget = self.wrap_layout_in_widget(self.left_layout_section_8)
+        return top_layout
 
-
-
-        # Add section  to left layout widget
-        self.left_layout.addWidget(self.left_layout_section_1_widget)
-        self.left_layout.addWidget(self.left_layout_section_2_widget)
-        self.left_layout.addWidget(self.left_layout_section_3_widget)
-        self.left_layout.addWidget(self.left_layout_section_4_widget)
-        self.left_layout.addWidget(self.left_layout_section_4_2_widget)
-        self.left_layout.addWidget(self.left_layout_section_5_widget)
-        self.left_layout.addWidget(self.left_layout_section_6_widget)
-        self.left_layout.addWidget(self.left_layout_section_7_widget)
-        self.left_layout.addWidget(self.left_layout_section_8_widget)
+    def create_list_group_box(self):
+        list_group_box = QGroupBox("Mappings")
+        list_layout = QVBoxLayout()
         
-        ####################Adding Labels, Buttons, and ComboBoxes##################
-
-        ###############################left Layout Rows############################
-        #***********************************ROW 1***********************************
-        header_label = QLabel()
-        header_label.setText('<center><b><font color="#8B0000" size="5"><u> EEG (*.edf) FILE INFORMATION<u></font></b></center>')
-        self.left_layout_section_1.addWidget(header_label)
-
-        #***********************************ROW 2***********************************
-        self.eeg_file_name_label = QLabel('EEG (.edf) File :')
-        self.eeg_file_name_label.setStyleSheet(label_style)
-        self.eeg_file_name_textbox = QLineEdit('Filename will appear here when you successfully select the .edf file')
-        self.eeg_file_name_textbox.setReadOnly(True)
-        self.eeg_file_name_textbox.setStyleSheet(text_box_style)
-        self.eeg_select_file_button = QPushButton('Select File')
-        self.eeg_select_file_button.setStyleSheet(button_style)
-        self.eeg_load_file_button = QPushButton('Load File')
-        self.eeg_load_file_button.setStyleSheet(button_style)
-
-        self.left_layout_section_2.addWidget(self.eeg_file_name_label)
-        self.left_layout_section_2.addWidget(self.eeg_file_name_textbox)
-        self.left_layout_section_2.addWidget(self.eeg_select_file_button)
-        self.left_layout_section_2.addWidget(self.eeg_load_file_button)
-
-        #***********************************ROW 3***********************************
-        self.eeg_sampling_freq_label = QLabel('Sampling Frequency :')
-        self.eeg_sampling_freq_label.setStyleSheet(label_style)
-        self.eeg_sampling_freq_text = QLineEdit('')
-        self.eeg_sampling_freq_text.setStyleSheet(text_box_style)
-        self.eeg_sampling_freq_text.setReadOnly(True)
-        self.eeg_duration_label = QLabel('Duration: ')
-        self.eeg_duration_label.setStyleSheet(label_style)
-        self.eeg_duration_text = QLineEdit('')
-        self.eeg_duration_text.setStyleSheet(text_box_style)
-        self.eeg_duration_text.setReadOnly(True)
-
-        self.left_layout_section_3.addWidget(self.eeg_sampling_freq_label)
-        self.left_layout_section_3.addWidget(self.eeg_sampling_freq_text)
-        self.left_layout_section_3.addWidget(self.eeg_duration_label)
-        self.left_layout_section_3.addWidget(self.eeg_duration_text)
-
-        #***********************************ROW 4**********************************
-        self.eeg_n_channels_label = QLabel('No. Channels :')        
-        self.eeg_n_channels_label.setStyleSheet(label_style)
-        self.eeg_n_channels_text = QLineEdit('')
-        self.eeg_n_channels_text.setStyleSheet(text_box_style)
-        self.eeg_n_channels_text.setReadOnly(True)
-        self.eeg_n_bad_channels_label = QLabel('No. bad channels')
-        self.eeg_n_bad_channels_label.setStyleSheet(label_style)
-        self.eeg_n_bad_channels_text = QLineEdit('')
-        self.eeg_n_bad_channels_text.setStyleSheet(text_box_style)
-        self.eeg_n_bad_channels_text.setReadOnly(True)
-
-        self.left_layout_section_4.addWidget(self.eeg_n_channels_label)
-        self.left_layout_section_4.addWidget(self.eeg_n_channels_text)
-        self.left_layout_section_4.addWidget(self.eeg_n_bad_channels_label)
-        self.left_layout_section_4.addWidget(self.eeg_n_bad_channels_text)
-
-        #***********************************ROW 4_2***********************************
-        self.eeg_start_time_label = QLabel('Start Time :')
-        self.eeg_start_time_label.setStyleSheet(label_style)
-        self.eeg_start_time_text = QLineEdit('')
-        self.eeg_start_time_text.setStyleSheet(text_box_style)
-        self.eeg_start_time_text.setReadOnly(True)
-        self.eeg_end_time_label = QLabel('End Time :')
-        self.eeg_end_time_label.setStyleSheet(label_style)
-        self.eeg_end_time_text = QLineEdit('')
-        self.eeg_end_time_text.setStyleSheet(text_box_style)
-        self.eeg_end_time_text.setReadOnly(True)
-
-        self.left_layout_section_4_2.addWidget(self.eeg_start_time_label)
-        self.left_layout_section_4_2.addWidget(self.eeg_start_time_text)
-        self.left_layout_section_4_2.addWidget(self.eeg_end_time_label)
-        self.left_layout_section_4_2.addWidget(self.eeg_end_time_text)
+        self.listWidget = QListWidget()
+        self.listWidget.addItems(self.mapping_list_items)
+        self.listWidget.currentItemChanged.connect(self.update_info_from_list_item)
         
+        list_layout.addWidget(self.listWidget)
+        list_group_box.setLayout(list_layout)
 
-        #***********************************ROW 5**********************************        
-        self.eeg_n_triggers_label = QLabel('No. Triggers :')
-        self.eeg_n_triggers_label.setStyleSheet(label_style)
-        self.eeg_n_triggers_text = QLineEdit('')
-        self.eeg_n_triggers_text.setStyleSheet(text_box_style)
-        self.eeg_n_triggers_text.setReadOnly(True)
-        self.eeg_n_events_label = QLabel('No. Events:')
-        self.eeg_n_events_label.setStyleSheet(label_style)
-        self.eeg_n_events_text = QLineEdit('')
-        self.eeg_n_events_text.setStyleSheet(text_box_style)
-        self.eeg_n_events_text.setReadOnly(True)
+        return list_group_box
 
-        self.left_layout_section_5.addWidget(self.eeg_n_triggers_label)
-        self.left_layout_section_5.addWidget(self.eeg_n_triggers_text)
-        self.left_layout_section_5.addWidget(self.eeg_n_events_label)
-        self.left_layout_section_5.addWidget(self.eeg_n_events_text)
-
-
-        #***********************************ROW 6**********************************
-        self.eeg_event_labels_label = QLabel('Event Labels :')
-        self.eeg_event_labels_label.setStyleSheet(label_style)
-        self.eeg_event_labels_text = QLineEdit('')
-        self.eeg_event_labels_text.setStyleSheet(text_box_style)
-        self.eeg_event_labels_text.setReadOnly(True)
-        self.eeg_event_duration_label = QLabel('Events Duration :')
-        self.eeg_event_duration_label.setStyleSheet(label_style)
-        self.eeg_event_duration_text = QLineEdit('')
-        self.eeg_event_duration_text.setStyleSheet(text_box_style)
-        self.eeg_event_duration_text.setReadOnly(True)
-
-        self.left_layout_section_6.addWidget(self.eeg_event_labels_label)
-        self.left_layout_section_6.addWidget(self.eeg_event_labels_text)
-        self.left_layout_section_6.addWidget(self.eeg_event_duration_label)
-        self.left_layout_section_6.addWidget(self.eeg_event_duration_text)
-
-
-        #***********************************ROW 7**********************************
-        self.eeg_triggers_list_label = QLabel('Triggers:')
-        self.eeg_triggers_list_label.setStyleSheet(label_style)
-        self.eeg_triggers_list_widget = QListWidget()
-        self.eeg_triggers_list_widget.setStyleSheet("background-color: #fff;")
-        self.eeg_triggers_list_widget.setMaximumHeight(100)
-
-        self.left_layout_section_7.addWidget(self.eeg_triggers_list_label)
-        self.left_layout_section_7.addWidget(self.eeg_triggers_list_widget)
-
-        #***********************************ROW 8**********************************
-        self.start_mapping_display_button = QPushButton('Open Mapping Display Window')
-        self.start_mapping_display_button.setStyleSheet(button_style)
-        self.left_layout_section_8.addWidget(self.start_mapping_display_button)
-
-
-        # Set up connections for EEG buttons
-        self.eeg_select_file_button.clicked.connect(self.select_eeg_file)
-        self.eeg_load_file_button.clicked.connect(self.load_eeg_file)
-        self.start_mapping_display_button.clicked.connect(self.open_mapping_display)
-
-
-        ##############################################################################################
-        ######################################Right Layout Sections###################################
-
-        self.right_layout = QVBoxLayout()
-        self.right_layout_widget = self.wrap_layout_in_widget(self.right_layout)
-        self.right_layout_widget.setStyleSheet(right_left_widget_style)
-
-        # Right Layout Sections
-        self.right_layout_section_1 = QHBoxLayout()
-        self.right_layout_section_1_widget = self.wrap_layout_in_widget(self.right_layout_section_1)
-        self.right_layout_section_2 = QHBoxLayout()
-        self.right_layout_section_2_widget = self.wrap_layout_in_widget(self.right_layout_section_2)
-        self.right_layout_section_3 = QHBoxLayout()
-        self.right_layout_section_3_widget = self.wrap_layout_in_widget(self.right_layout_section_3)
-        self.right_layout_section_4 = QHBoxLayout()
-        self.right_layout_section_4_widget = self.wrap_layout_in_widget(self.right_layout_section_4)
-        self.right_layout_section_5 = QHBoxLayout()
-        self.right_layout_section_5_widget = self.wrap_layout_in_widget(self.right_layout_section_5)
-        self.right_layout_section_6 = QHBoxLayout()
-        self.right_layout_section_6_widget = self.wrap_layout_in_widget(self.right_layout_section_6)
-
-        # Add sections to right layout widget
-        self.right_layout.addWidget(self.right_layout_section_1_widget)
-        self.right_layout.addWidget(self.right_layout_section_2_widget)
-        self.right_layout.addWidget(self.right_layout_section_3_widget)
-        self.right_layout.addWidget(self.right_layout_section_4_widget)
-        self.right_layout.addWidget(self.right_layout_section_5_widget)
-        self.right_layout.addWidget(self.right_layout_section_6_widget)
-
-        # Adding Labels, Buttons, and ComboBoxes
-        ###############################Right Layout Rows############################
-        #***********************************ROW 1***********************************
-        header_label = QLabel()
-        header_label.setText('<center><b><font color="#8B0000" size="5"><u> AUDIO (*.wav) FILE INFORMATION<u></font></b></center>')
-        self.right_layout_section_1.addWidget(header_label)
-
-        #***********************************ROW 2***********************************
-        self.audio_file_name_label = QLabel('Audio (.wav) File :')
-        self.audio_file_name_label.setStyleSheet(label_style)
-        self.audio_file_name_textbox = QLineEdit('Filename will appear here when you successfully select the .wav file')
-        self.audio_file_name_textbox.setReadOnly(True)
-        self.audio_file_name_textbox.setStyleSheet(text_box_style)
-        self.audio_select_file_button = QPushButton('Select File')
-        self.audio_select_file_button.setStyleSheet(button_style)
-        self.audio_load_file_button = QPushButton('Load File')
-        self.audio_load_file_button.setStyleSheet(button_style)
-
-        self.right_layout_section_2.addWidget(self.audio_file_name_label)
-        self.right_layout_section_2.addWidget(self.audio_file_name_textbox)
-        self.right_layout_section_2.addWidget(self.audio_select_file_button)
-        self.right_layout_section_2.addWidget(self.audio_load_file_button)
-
-
-        #***********************************ROW 3***********************************
-        self.audio_sampling_freq_label = QLabel('Sampling Frequency :')
-        self.audio_sampling_freq_label.setStyleSheet(label_style)
-        self.audio_sampling_freq_text = QLineEdit('')
-        self.audio_sampling_freq_text.setReadOnly(True)
-        self.audio_sampling_freq_text.setStyleSheet(text_box_style)
-        self.audio_duration_label = QLabel('Duration :')
-        self.audio_duration_label.setStyleSheet(label_style)
-        self.audio_duration_text = QLineEdit('')
-        self.audio_duration_text.setReadOnly(True)
-        self.audio_duration_text.setStyleSheet(text_box_style)
-
-        self.right_layout_section_3.addWidget(self.audio_sampling_freq_label)
-        self.right_layout_section_3.addWidget(self.audio_sampling_freq_text)
-        self.right_layout_section_3.addWidget(self.audio_duration_label)
-        self.right_layout_section_3.addWidget(self.audio_duration_text)
-
-        #***********************************ROW 4***********************************
-        self.audio_n_markers_label = QLabel('No. of Markers :')
-        self.audio_n_markers_label.setStyleSheet(label_style)
-        self.audio_n_markers_text = QLineEdit('')
-        self.audio_n_markers_text.setReadOnly(True)
-        self.audio_n_markers_text.setStyleSheet(text_box_style)
-        self.audio_markers_start_label = QLabel('Markers Start Times :')
-        self.audio_markers_start_label.setStyleSheet(label_style)
-        self.audio_markers_start_text = QLineEdit('')
-        self.audio_markers_start_text.setReadOnly(True)
-        self.audio_markers_start_text.setStyleSheet(text_box_style)
-
-        self.right_layout_section_4.addWidget(self.audio_n_markers_label)
-        self.right_layout_section_4.addWidget(self.audio_n_markers_text)
-        self.right_layout_section_4.addWidget(self.audio_markers_start_label)
-        self.right_layout_section_4.addWidget(self.audio_markers_start_text)
-
-        #***********************************ROW 5***********************************
-        self.audio_markers_end_label = QLabel('Markers End Times :')
-        self.audio_markers_end_label.setStyleSheet(label_style)
-        self.audio_markers_end_text = QLineEdit('')
-        self.audio_markers_end_text.setReadOnly(True)
-        self.audio_markers_end_text.setStyleSheet(text_box_style)
-        self.audio_markers_duration_label = QLabel('Markers Duration :')
-        self.audio_markers_duration_label.setStyleSheet(label_style)
-        self.audio_markers_duration_text = QLineEdit('')
-        self.audio_markers_duration_text.setReadOnly(True)
-        self.audio_markers_duration_text.setStyleSheet(text_box_style)
-
-        self.right_layout_section_5.addWidget(self.audio_markers_end_label)
-        self.right_layout_section_5.addWidget(self.audio_markers_end_text)
-        self.right_layout_section_5.addWidget(self.audio_markers_duration_label)
-        self.right_layout_section_5.addWidget(self.audio_markers_duration_text)
-
-        #***********************************ROW 6***********************************
-        self.audio_start_time_label = QLabel('Start Time :')
-        self.audio_start_time_label.setStyleSheet(label_style)
-        self.audio_start_time_text = QLineEdit('')
-        self.audio_start_time_text.setReadOnly(True)
-        self.audio_start_time_text.setStyleSheet(text_box_style)
-        self.audio_end_time_label = QLabel('End Time :')
-        self.audio_end_time_label.setStyleSheet(label_style)
-        self.audio_end_time_text = QLineEdit('')
-        self.audio_end_time_text.setReadOnly(True)
-        self.audio_end_time_text.setStyleSheet(text_box_style)
-        self.audio_duration_full_label = QLabel('Duration :')
-        self.audio_duration_full_label.setStyleSheet(label_style)
-        self.audio_duration_full_text = QLineEdit('')
-        self.audio_duration_full_text.setReadOnly(True)
-        self.audio_duration_full_text.setStyleSheet(text_box_style)
-
-        self.right_layout_section_6.addWidget(self.audio_start_time_label)
-        self.right_layout_section_6.addWidget(self.audio_start_time_text)
-        self.right_layout_section_6.addWidget(self.audio_end_time_label)
-        self.right_layout_section_6.addWidget(self.audio_end_time_text)
-        self.right_layout_section_6.addWidget(self.audio_duration_full_label)
-        self.right_layout_section_6.addWidget(self.audio_duration_full_text)
+    def create_eeg_plot_widget(self):
+        plot_widget = pg.PlotWidget(title="EEG Activity")
+        plot_widget.setBackground('w')
+        plot_widget.getPlotItem().showGrid(True, True)
+        self.plotDataItem = plot_widget.plot(pen='b')
+        self.update_eeg_plot()
         
-        # Set up connections for Audio buttons
-        self.audio_select_file_button.clicked.connect(self.select_audio_file)
-        self.audio_load_file_button.clicked.connect(self.load_audio_file)
+        return plot_widget
 
-        # Add left and right layout widgets to the main layout
-        self.main_layout.addWidget(self.left_layout_widget)
-        self.main_layout.addWidget(self.right_layout_widget)
+    def create_audio_plot_widget(self):
+        audio_plot_widget = pg.PlotWidget(title="Audio Visualizer")
+        audio_plot_widget.setBackground('g')
+        audio_plot_widget.getPlotItem().showGrid(True, True)
+        self.audioPlotDataItem = audio_plot_widget.plot(pen='y')
+        
+        return audio_plot_widget
 
+    def create_bottom_layout(self):
+        bottom_layout = QVBoxLayout()
+        
+        audio_control_layout = self.create_audio_control_layout()
+        info_layout = self.create_info_layout()
+        navigation_layout = self.create_navigation_layout()
+        
+        bottom_layout.addLayout(audio_control_layout)
+        bottom_layout.addLayout(info_layout)
+        bottom_layout.addStretch()
+        bottom_layout.addLayout(navigation_layout)
+        
+        return bottom_layout
 
-    def wrap_layout_in_widget(self, layout):
-        widget = QWidget()
-        widget.setLayout(layout)
-        return widget
+    def create_audio_control_layout(self):
+        audio_control_layout = QHBoxLayout()
+        
+        self.play_button = QPushButton("Play")
+        self.play_button.setStyleSheet(button_style)
+        self.stop_button = QPushButton("Stop")
+        self.stop_button.setStyleSheet(button_style)
+        
+        self.play_button.clicked.connect(self.play_audio)
+        self.stop_button.clicked.connect(self.stop_audio)
+        
+        audio_control_layout.addWidget(self.play_button)
+        audio_control_layout.addWidget(self.stop_button)
+        
+        return audio_control_layout
 
-    def select_eeg_file(self):
-        options = QFileDialog.Options()
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select EEG File", "", "EDF Files (*.edf);;All Files (*)", options=options)
-        if file_path:
-            self.eeg_file_name_textbox.setText(get_file_name_from_path(file_path))
+    def create_info_layout(self):
+        self.labels = ["Action:", "Word:", "Start Time(EEG):", "End Time(EEG):", "Start Index(EEG):", "End Index(EEG):", "Start Index(Audio):", "Duration:", "Start Time(Audio):"]
+        self.info_layout = QVBoxLayout()
+        count = 0
+        
+        for i in range(3):
+            hbox1 = QHBoxLayout()
+            hbox2 = QHBoxLayout()
 
-    def select_audio_file(self):
-        options = QFileDialog.Options()
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select Audio File", "", "WAV Files (*.wav);;All Files (*)", options=options)
-        if file_path:
-            self.audio_file_name_textbox.setText(get_file_name_from_path(file_path))
+            for j in range(3):
+                label = QLabel(self.labels[count])
+                count += 1
+                text_box = QLineEdit()
+                hbox1.addWidget(label)
+                hbox2.addWidget(text_box)
+                
+            self.info_layout.addLayout(hbox1)
+            self.info_layout.addLayout(hbox2)
+        
+        return self.info_layout
 
-    def load_eeg_file(self):
-        file_path = self.eeg_file_name_textbox.text()
-        if not file_path:
-            QMessageBox.warning(self, 'Warning', 'Please select an EEG file first.')
-            return
+    def create_navigation_layout(self):
+        button_layout = QHBoxLayout()
+        
+        self.prev_button = QPushButton("Previous")
+        self.prev_button.setStyleSheet(button_style)
+        self.next_button = QPushButton("Next")
+        self.next_button.setStyleSheet(button_style)
+        self.discard_button = QPushButton("Discard")
+        self.discard_button.setStyleSheet(button_style)
+        self.save_button = QPushButton("Save")
+        self.save_button.setStyleSheet(button_style)
+        
+        self.prev_button.clicked.connect(self.prev_action)
+        self.next_button.clicked.connect(self.next_action)
+        self.discard_button.clicked.connect(self.discard_action)
+        self.save_button.clicked.connect(self.save_action)
+        
+        button_layout.addWidget(self.prev_button)
+        button_layout.addWidget(self.next_button)
+        button_layout.addWidget(self.discard_button)
+        button_layout.addWidget(self.save_button)
+        
+        return button_layout
 
-        self.eeg_thread = LoadEEGThread(file_path)
-        self.eeg_thread.finished.connect(self.on_eeg_loaded)
-        self.eeg_thread.error.connect(self.on_eeg_load_error)
-        self.eeg_thread.start()
+    def closeEvent(self, event):
+        self.about_to_close.emit()
+        event.accept()
 
-    def on_eeg_loaded(self, eeg_data):
-        self.EEG_DATA = eeg_data
+    def update_eeg_plot(self):
+        eeg_data = np.random.normal(size=1000)
+        self.plotDataItem.setData(eeg_data)
 
-        self.eeg_sampling_freq_text.setText(str(eeg_data.sampling_frequency))
-        self.eeg_duration_text.setText(str(eeg_data.duration))
-        self.eeg_n_channels_text.setText(str(eeg_data.n_channels))
-        self.eeg_n_bad_channels_text.setText(str(len(eeg_data.bad_channels)))
-        self.eeg_start_time_text.setText(eeg_data.start_time)
-        self.eeg_end_time_text.setText(eeg_data.end_time)
-        self.eeg_n_triggers_text.setText(str(eeg_data.n_triggers))
-        self.eeg_n_events_text.setText(str(eeg_data.n_events))
-        self.eeg_event_labels_text.setText(', '.join(eeg_data.event_labels))
-        self.eeg_event_duration_text.setText(str(eeg_data.event_duration))
+    def update_audio_plot(self):
+        if self.audio_data is not None:
+            chunk_size = 1024
+            end_index = self.audio_index + chunk_size
+            if end_index >= len(self.audio_data):
+                end_index = len(self.audio_data)
+                self.timer.stop()
+            data_chunk = self.audio_data[self.audio_index:end_index]
+            self.audioPlotDataItem.setData(data_chunk)
+            self.audio_index = end_index
 
-        triggers_list = convert_eeg_events_to_list(eeg_data.triggers)
-        self.eeg_triggers_list_widget.clear()
-        self.eeg_triggers_list_widget.addItems(triggers_list)
+    def play_audio(self):
+        self.audio_sample_rate = self.EEG_AUDIO_DATA.audio.SAMPLING_FREQUENCY
+        write(self.audio_file_name_to_save_path, int(self.audio_sample_rate), self.audio_sample)
+        self.audio_data, self.sample_rate = sf.read(self.audio_file_name_to_save_path, dtype='int16')
+        self.audio_index = 0
+        media_content = QMediaContent(QUrl.fromLocalFile(str(self.audio_file_name_to_save_path)))
+        self.mediaPlayer.setMedia(media_content)
+        self.mediaPlayer.play()
+        self.timer.start(30)
 
-    def on_eeg_load_error(self, error_message):
-        QMessageBox.critical(self, 'Error', f'Failed to load EEG file: {error_message}')
+    def stop_audio(self):
+        self.mediaPlayer.stop()
+        self.timer.stop()
 
-    def load_audio_file(self):
-        file_path = self.audio_file_name_textbox.text()
-        if not file_path:
-            QMessageBox.warning(self, 'Warning', 'Please select an audio file first.')
-            return
+    def prev_action(self):
+        current_row = self.listWidget.currentRow()
+        if current_row > 0:
+            self.listWidget.setCurrentRow(current_row - 1)
+            self.update_info_from_list_item()
 
-        self.audio_thread = LoadAudioThread(file_path)
-        self.audio_thread.finished.connect(self.on_audio_loaded)
-        self.audio_thread.error.connect(self.on_audio_load_error)
-        self.audio_thread.start()
+    def next_action(self):
+        current_row = self.listWidget.currentRow()
+        if current_row < self.listWidget.count() - 1:
+            self.listWidget.setCurrentRow(current_row + 1)
+            self.update_info_from_list_item()
 
-    def on_audio_loaded(self, audio_data):
-        self.AUDIO_DATA = audio_data
+    def discard_action(self):
+        current_row = self.listWidget.currentRow()
+        if current_row < self.listWidget.count() - 1:
+            self.listWidget.setCurrentRow(current_row + 1)
+            self.update_info_from_list_item()
 
-        self.audio_sampling_freq_text.setText(str(audio_data.sampling_frequency))
-        self.audio_duration_text.setText(str(audio_data.duration))
-        self.audio_n_markers_text.setText(str(audio_data.n_markers))
-        self.audio_markers_start_text.setText(', '.join(map(str, audio_data.markers_start)))
-        self.audio_markers_end_text.setText(', '.join(map(str, audio_data.markers_end)))
-        self.audio_markers_duration_text.setText(str(audio_data.markers_duration))
-        self.audio_start_time_text.setText(audio_data.start_time)
-        self.audio_end_time_text.setText(audio_data.end_time)
-        self.audio_duration_full_text.setText(str(audio_data.duration))
+    def save_action(self):
+        meta_data = {'audio_file_name': self.audio_file_name_to_save_path, 'eeg_file_name':self.eeg_file_name_to_save_path,
+                     'Action':self.marker, 'word': self.word, 'eeg_start_index':self.eeg_start_index,
+                        'eeg_end_index': self.eeg_end_index, 'audio_start_index': self.audio_start_index,
+                        'audio_end_index':self.audio_end_index 
+                    }
+        with open(self.meta_data_file_name_to_save_path, 'w') as json_file:
+            json.dump(meta_data, json_file)
+        print(self.eeg_sample)
 
-    def on_audio_load_error(self, error_message):
-        QMessageBox.critical(self, 'Error', f'Failed to load audio file: {error_message}')
+    def update_info_from_list_item(self):
+        selected_item_text = self.listWidget.currentItem().text()
+        info_parts = selected_item_text.split(",")
 
-    def open_mapping_display(self):
-        if self.EEG_DATA is None or self.AUDIO_DATA is None:
-            QMessageBox.warning(self, 'Warning', 'Please load both EEG and audio files before opening the mapping display.')
-            return
+        self.marker = info_parts[0]
+        self.word = info_parts[1]
+        self.eeg_start_index = int(info_parts[4])
+        self.eeg_end_index = int(info_parts[5])
+        self.duration = int(info_parts[7])
+        self.audio_start_index = int(info_parts[6])
+        self.audio_end_index = self.audio_start_index + int(
+            (self.duration / int(self.EEG_AUDIO_DATA.eeg.SAMPLING_FREQUENCY)) * self.EEG_AUDIO_DATA.audio.SAMPLING_FREQUENCY)
 
-        eeg_audio_data = EEG_AUDIO_DATA(self.EEG_DATA, self.AUDIO_DATA)
-        self.mappingDisplay = EEGAudioApp(eeg_audio_data)
-        self.mappingDisplay.show()
+        self.audio_sample = self.EEG_AUDIO_DATA.audio.AUDIO[self.audio_start_index:self.audio_end_index]
+        self.audio_sample = self.audio_sample.reshape(-1)
+        self.eeg_sample = self.EEG_AUDIO_DATA.eeg.RAW_DATA[:self.eeg_start_index:self.eeg_end_index]
 
+        self.channel_names = self.EEG_AUDIO_DATA.eeg.CHANNEL_NAMES
+        self.eeg_file_name_to_save_path = Path(config.OUTPUT_DIR_EEG, f'eeg_{self.marker}_{self.word}_{self.eeg_start_index}.npy')
+        self.audio_file_name_to_save_path = Path(config.OUTPUT_DIR_AUDIO, f'audio_{self.marker}_{self.word}_{self.eeg_start_index}.npy')
+        self.meta_data_file_name_to_save_path = Path(config.OUTPUT_DIR_METADATA, f'meta_{self.marker}_{self.word}.json')
 
+        print(
+            self.marker,
+            self.word,
+            self.eeg_start_index,
+            self.eeg_end_index,
+            self.duration,
+            self.audio_start_index,
+            self.audio_end_index,
+            self.eeg_file_name_to_save_path,
+            self.audio_file_name_to_save_path
+        )
+        import pdb
+        
+        
+        widgets = extract_widgets(self.info_layout)
+        count = 0
+        for widget in widgets:
+            if isinstance(widget, QLineEdit):
+                widget.setText(info_parts[count])
+                count += 1
