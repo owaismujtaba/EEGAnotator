@@ -33,7 +33,7 @@ class EEG_AUDIO_DATA:
     def __init__(self, eeg_data_obj, audio_data_object) -> None:
         self.eeg = eeg_data_obj
         self.audio = audio_data_object
-        self.audio_marker_start_time = self.audio.MARKERS_TIME_STAMPS[0]
+        self.AudioMarkerStartTime = self.audio.MARKERS_TIME_STAMPS[0]
         
         self.NearestEEGStartPointToAudio = find_closest_starting_point_in_eeg(
             self.eeg.EVENTS, self.audio_marker_start_time

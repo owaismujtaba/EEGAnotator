@@ -37,7 +37,9 @@ class EEGAudioApp(QMainWindow):
         list_group_box = QGroupBox("Mappings")
         list_layout = QVBoxLayout()
         self.listWidget = QListWidget()
-        self.listWidget.addItems(["Item 1", "Item 2", "Item 3"])  # Add items to the list
+        self.listWidget.addItems(['StartBlockSaying, , 1656414818.7617188, 1656414820.453125, 2073990, 2074856, 790883, 866, 1656407619.1551409',
+ 'StartReading, TENEDOR, 1656414820.453125, 1656414821.1621094, 2074856, 2075219, 865464, 363, 1656407620.8462954',
+ 'StartSaying, TENEDOR, 1656414821.1621094, 1656414823.1679688, 2075219, 2076246, 896771, 1027, 1656407621.5561843'] )  # Add items to the list
         self.listWidget.currentItemChanged.connect(self.on_list_item_changed)
         list_layout.addWidget(self.listWidget)
         list_group_box.setLayout(list_layout)

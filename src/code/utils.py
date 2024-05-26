@@ -34,7 +34,7 @@ def bundle_audio_markers_with_timestamps(markers, marker_timestamps, audio_times
         marker_values = markers[index][0].split(':')
 
         marker_action = marker_values[0]
-        marker_word = marker_values[1] if len(marker_values) > 1 else ''
+        marker_word = marker_values[1] if len(marker_values) > 1 else '.'
         timestamp = marker_timestamps[index]
         audio_start_index = closest_indices[index]
 
