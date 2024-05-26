@@ -2,11 +2,15 @@ import sys
 import numpy as np
 import soundfile as sf
 import pyqtgraph as pg
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QListWidget, QGroupBox, QLabel, QLineEdit
+from PyQt5.QtWidgets import  QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QListWidget, QGroupBox, QLabel, QLineEdit
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtCore import QUrl, QTimer, pyqtSignal
+from PyQt5.QtGui import QIcon
+
 from src.gui.utils import extract_widgets, button_style
 from src.gui.utils import convert_mappings_to_list_for_mainDisplay
+import config
+
 
 class EEGAudioApp(QMainWindow):
     about_to_close = pyqtSignal()
@@ -27,6 +31,7 @@ class EEGAudioApp(QMainWindow):
         # Main widget
         self.main_widget = QWidget()
         self.setCentralWidget(self.main_widget)
+        self.setWindowIcon(QIcon(config.WINDOW_ICON_PATH))
         
         # Layouts
         main_layout = QVBoxLayout()

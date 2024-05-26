@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (
     QMessageBox,  QLineEdit,  QListWidget
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtGui import QIcon, QPalette, QBrush, QPixmap
 
 from src.gui.utils import get_file_name_from_path, convert_eeg_events_to_list
 from src.code.eeg import EEG_DATA
@@ -11,7 +12,7 @@ from src.code.audio import AUDIO_DATA
 from src.gui.mappingDisplay import EEGAudioApp
 from src.utils import EEG_AUDIO_DATA
 from src.gui.utils import text_box_style, label_style, button_style, combobox_style
-
+import config
 
 
 class LoadEEGThread(QThread):
@@ -51,11 +52,22 @@ class MainWindow(QMainWindow):
         self.EEG_DATA = None
         self.AUDIO_DATA = None
         self.mappingDisplay = None
-        self.setWindowTitle('DeepRESTORE')
-        self.setGeometry(500, 300, 1200, 300)  
+        self.setWindowTitle('EEG_AUDIO_Anotator')
+        self.setGeometry(500, 300, 1200, 300)
+        self.setWindowIcon(QIcon(config.WINDOW_ICON_PATH))  
         self.setStyleSheet("background-color: #f0f0f0;")
 
+        self.background_label = QLabel(self)
+        self.background_label.setGeometry(0, 0, self.width(), self.height())
+        pixmap = QPixmap(config.BACKGROUND_IMAGE_PATH)
+
+
+        self.background_label.setPixmap(pixmap)
+        self.background_label.setScaledContents(True)
+        self.background_label.setAlignment(Qt.AlignCenter)
+
         central_widget = QWidget()
+        
         self.setCentralWidget(central_widget)
         self.main_layout = QHBoxLayout()
         central_widget.setLayout(self.main_layout)

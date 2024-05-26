@@ -6,28 +6,29 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtCore import QUrl, QTimer, pyqtSignal
 from src.gui.utils import extract_widgets, button_style
-# Global style for buttons
+from src.gui.utils import convert_mappings_to_list_for_mainDisplay
+import config
 
 class EEGAudioApp(QMainWindow):
     about_to_close = pyqtSignal()
 
-    def __init__(self, x):
-        super().__init__(eeg_data, audio_data)
-        self.initUI()
+    def __init__(self, eeg_daudio_data):
+        super().__init__()
+        self.EEG_AUDIO_DATA = eeg_daudio_data
+        self.MAPPINGS = self.EEG_AUDIO_DATA.MappingEEGEventsWithMarkers
         
-        # Audio visualizer variables
-        self.audio_data = None
-        self.sample_rate = None
+        self.mapping_list_items = convert_mappings_to_list_for_mainDisplay(self.MAPPINGS)
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_audio_plot)
+        self.audio_index = 0
+        self.initUI()
         
 
     def initUI(self):
         # Main widget
         self.main_widget = QWidget()
         self.setCentralWidget(self.main_widget)
-        self.setGeometry(500, 300, 1200, 600)
-        self.setWindowTitle('EEG and Audio Map Viewer')
+        
         # Layouts
         main_layout = QVBoxLayout()
         top_layout = QHBoxLayout()
@@ -37,9 +38,7 @@ class EEGAudioApp(QMainWindow):
         list_group_box = QGroupBox("Mappings")
         list_layout = QVBoxLayout()
         self.listWidget = QListWidget()
-        self.listWidget.addItems(['StartBlockSaying, , 1656414818.7617188, 1656414820.453125, 2073990, 2074856, 790883, 866, 1656407619.1551409',
-                                 'StartReading, TENEDOR, 1656414820.453125, 1656414821.1621094, 2074856, 2075219, 865464, 363, 1656407620.8462954',
-                                 'StartSaying, TENEDOR, 1656414821.1621094, 1656414823.1679688, 2075219, 2076246, 896771, 1027, 1656407621.5561843'])
+        self.listWidget.addItems(self.mapping_list_items)
         self.listWidget.currentItemChanged.connect(self.update_info_from_list_item)
         list_layout.addWidget(self.listWidget)
         list_group_box.setLayout(list_layout)
@@ -73,7 +72,6 @@ class EEGAudioApp(QMainWindow):
         audio_control_layout.addWidget(self.stop_button)
 
         
-        #bottom_layout.addLayout(info_layout)
         bottom_layout.addLayout(audio_control_layout)
 
         ## 
@@ -122,8 +120,8 @@ class EEGAudioApp(QMainWindow):
         self.main_widget.setLayout(main_layout)
 
         # Window settings
-        
-        
+        self.setWindowTitle('EEG and Audio Viewer')
+        self.setGeometry(100, 100, 1200, 600)
 
         # Initialize media player
         self.mediaPlayer = QMediaPlayer()
@@ -181,7 +179,7 @@ class EEGAudioApp(QMainWindow):
 
     def update_info_from_list_item(self):
         selected_item_text = self.listWidget.currentItem().text()
-        info_parts = selected_item_text.split(", ")
+        info_parts = selected_item_text.split(",")
         widgets = extract_widgets(self.info_layout)
         count = 0
         for widget in widgets:
