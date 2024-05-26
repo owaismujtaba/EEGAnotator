@@ -43,7 +43,14 @@ combobox_style = """
                     border-radius: 5px
                 """
 
-
+def convert_mappings_to_list_for_mainDisplay(mappings):
+    list_of_strings = []
+    for item in mappings:
+        print(item)
+        item = ','.join(str(x) for x in item)
+        list_of_strings.append(item)
+     
+    return list_of_strings
 
 def get_file_name_from_path(file_path):
     filename = file_path.split('/')[-1]

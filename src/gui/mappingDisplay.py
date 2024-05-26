@@ -6,27 +6,28 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout,
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtCore import QUrl, QTimer, pyqtSignal
 from src.gui.utils import extract_widgets, button_style
-# Global style for buttons
+from src.gui.utils import convert_mappings_to_list_for_mainDisplay
 
 class EEGAudioApp(QMainWindow):
     about_to_close = pyqtSignal()
 
-    def __init__(self, x):
+    def __init__(self, eeg_daudio_data):
         super().__init__()
-        self.initUI()
-        
-        # Audio visualizer variables
-        self.audio_data = None
-        self.sample_rate = None
+        self.EEG_AUDIO_DATA = eeg_daudio_data
+        self.MAPPINGS = self.EEG_AUDIO_DATA.MappingEEGEventsWithMarkers
+
+        self.mapping_list_items = convert_mappings_to_list_for_mainDisplay(self.MAPPINGS)
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_audio_plot)
         self.audio_index = 0
+        self.initUI()
+        
 
     def initUI(self):
         # Main widget
         self.main_widget = QWidget()
         self.setCentralWidget(self.main_widget)
-        self.setGeometry(500, 300, 1200, 200)
+        
         # Layouts
         main_layout = QVBoxLayout()
         top_layout = QHBoxLayout()
@@ -36,10 +37,8 @@ class EEGAudioApp(QMainWindow):
         list_group_box = QGroupBox("Mappings")
         list_layout = QVBoxLayout()
         self.listWidget = QListWidget()
-        self.listWidget.addItems(['StartBlockSaying, , 1656414818.7617188, 1656414820.453125, 2073990, 2074856, 790883, 866, 1656407619.1551409',
-                                 'StartReading, TENEDOR, 1656414820.453125, 1656414821.1621094, 2074856, 2075219, 865464, 363, 1656407620.8462954',
-                                 'StartSaying, TENEDOR, 1656414821.1621094, 1656414823.1679688, 2075219, 2076246, 896771, 1027, 1656407621.5561843'])
-        self.listWidget.currentItemChanged.connect(self.on_list_item_changed)
+        self.listWidget.addItems(self.mapping_list_items)
+        self.listWidget.currentItemChanged.connect(self.update_info_from_list_item)
         list_layout.addWidget(self.listWidget)
         list_group_box.setLayout(list_layout)
 
@@ -71,23 +70,7 @@ class EEGAudioApp(QMainWindow):
         audio_control_layout.addWidget(self.play_button)
         audio_control_layout.addWidget(self.stop_button)
 
-        # Add some labels and line edits to display list item contents
-        '''
-        self.info_labels = []
-        self.info_lineedits = []
-        info_layout = QVBoxLayout()
-        for i in range(3):
-            info_row_layout = QHBoxLayout()
-            label = QLabel(f"Info {i+1}:")
-            lineedit = QLineEdit()
-            lineedit.setReadOnly(True)
-            self.info_labels.append(label)
-            self.info_lineedits.append(lineedit)
-            info_row_layout.addWidget(label)
-            info_row_layout.addWidget(lineedit)
-            info_layout.addLayout(info_row_layout)
-        '''
-        #bottom_layout.addLayout(info_layout)
+        
         bottom_layout.addLayout(audio_control_layout)
 
         ## 
@@ -137,7 +120,7 @@ class EEGAudioApp(QMainWindow):
 
         # Window settings
         self.setWindowTitle('EEG and Audio Viewer')
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 1200, 600)
 
         # Initialize media player
         self.mediaPlayer = QMediaPlayer()
@@ -175,10 +158,17 @@ class EEGAudioApp(QMainWindow):
         self.timer.stop()
 
     def prev_action(self):
-        print("Previous button clicked")
-
+        current_row = self.listWidget.currentRow()
+        if current_row > 0:
+            self.listWidget.setCurrentRow(current_row - 1)
+            self.update_info_from_list_item()
+    
     def next_action(self):
-                print("Next button clicked")
+        current_row = self.listWidget.currentRow()
+        if current_row < self.listWidget.count() - 1:
+            self.listWidget.setCurrentRow(current_row + 1)
+            self.update_info_from_list_item()
+
 
     def discard_action(self):
         print("Discard button clicked")
@@ -186,15 +176,13 @@ class EEGAudioApp(QMainWindow):
     def save_action(self):
         print("Save button clicked")
 
-    def on_list_item_changed(self, current, previous):
+    def update_info_from_list_item(self):
         selected_item_text = self.listWidget.currentItem().text()
-        info_parts = selected_item_text.split(", ")
-        print(info_parts)
-
+        info_parts = selected_item_text.split(",")
         widgets = extract_widgets(self.info_layout)
         count = 0
         for widget in widgets:
             if isinstance(widget, QLineEdit):
-                 widget.setText(info_parts[count])
-                 count +=1
+                widget.setText(info_parts[count])
+                count += 1
 

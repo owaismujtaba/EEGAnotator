@@ -8,9 +8,11 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from src.gui.utils import get_file_name_from_path, convert_eeg_events_to_list
 from src.code.eeg import EEG_DATA
 from src.code.audio import AUDIO_DATA
-from src.gui.mappingDisplay1 import EEGAudioApp
+from src.gui.mappingDisplay import EEGAudioApp
 from src.utils import EEG_AUDIO_DATA
 from src.gui.utils import text_box_style, label_style, button_style, combobox_style
+
+
 
 class LoadEEGThread(QThread):
     finished = pyqtSignal(object)
@@ -48,7 +50,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.EEG_DATA = None
         self.AUDIO_DATA = None
-        self.mappingDisplay = EEGAudioApp(self.EEG_DATA)
+        self.mappingDisplay = None
         self.setWindowTitle('DeepRESTORE')
         self.setGeometry(500, 300, 1200, 300)  
         self.setStyleSheet("background-color: #f0f0f0;")
@@ -426,10 +428,12 @@ class MainWindow(QMainWindow):
 
 
     def display_mapping_page(self):
-        #if self.EEG_DATA:
-            #eeg_audio_data = EEG_AUDIO_DATA(self.EEG_DATA, self.AUDIO_DATA)
+        if self.EEG_DATA and self.AUDIO_DATA:
+            #self.eeg_audio_data = EEG_AUDIO_DATA(self.EEG_DATA, self.AUDIO_DATA)
+            #self.
             self.hide()
-            self.mapping_page_viewer = EEGAudioApp(self.EEG_DATA)
+            eeg_audio_data = EEG_AUDIO_DATA(self.EEG_DATA, self.AUDIO_DATA)
+            self.mapping_page_viewer = EEGAudioApp(eeg_audio_data)
             self.mapping_page_viewer.about_to_close.connect(self.show_main_window)        
             self.mapping_page_viewer.show()
         #else:
