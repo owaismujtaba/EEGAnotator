@@ -9,7 +9,7 @@ from PyQt5.QtGui import QIcon, QPalette, QBrush, QPixmap
 from src.gui.utils import get_file_name_from_path, convert_eeg_events_to_list
 from src.code.eeg import EEG_DATA
 from src.code.audio import AUDIO_DATA
-from src.gui.mappingDisplay import EEGAudioApp
+from src.gui.mappingDisplay1 import EEGAudioApp
 from src.utils import EEG_AUDIO_DATA
 from src.gui.utils import text_box_style, label_style, button_style, combobox_style
 import config
