@@ -47,7 +47,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.EEG_DATA = None
         self.AUDIO_DATA = None
-        self.mappingDisplay = EEGAudioApp()
+        self.mappingDisplay = EEGAudioApp(self.EEG_DATA)
         self.setWindowTitle('DeepRESTORE')
         self.setGeometry(500, 300, 1200, 300)  
         self.setStyleSheet("background-color: #f0f0f0;")
@@ -459,13 +459,16 @@ class MainWindow(QMainWindow):
         self.visualize_eeg_btn.clicked.connect(self.visualize_eeg_channels)
         self.map_audio_and_eeg_button.clicked.connect(self.display_mapping_page)
 
+
     def display_mapping_page(self):
-        if self.EEG_DATA and self.AUDIO_DATA:
-            eeg_audio_data = EEG_AUDIO_DATA(self.EEG_DATA, self.AUDIO_DATA)
-        self.hide()
-        self.mapping_page_viewer = self.mappingDisplay()
-        self.mapping_page_viewer.about_to_close.connect(self.show_main_window)        
-        self.mapping_page_viewer.show()
+        if self.EEG_DATA:
+            #eeg_audio_data = EEG_AUDIO_DATA(self.EEG_DATA, self.AUDIO_DATA)
+            self.hide()
+            self.mapping_page_viewer = EEGAudioApp(self.EEG_DATA)
+            self.mapping_page_viewer.about_to_close.connect(self.show_main_window)        
+            self.mapping_page_viewer.show()
+        else:
+            pass
 
     def show_main_window(self):
         self.show()
@@ -475,7 +478,7 @@ class MainWindow(QMainWindow):
 
     def visualize_eeg_channels(self):
         selected_channels = [self.eeg_channels_selected_list.item(i).text() for i in range(self.eeg_channels_selected_list.count())]
-        plot_data = self.eeg_data.RAW_DATA.copy()
+        plot_data = self.EEG_DATA.RAW_DATA.copy()
         eeg_data_selected_channels = plot_data.pick_channels(selected_channels)
         eeg_data_selected_channels.plot(duration=60,show_options=True)
         
