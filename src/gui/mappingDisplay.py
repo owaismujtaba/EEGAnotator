@@ -1,7 +1,7 @@
-import sys
+
 import numpy as np
-import soundfile as sf
 import pyqtgraph as pg
+import soundfile as sf
 from PyQt5.QtWidgets import  QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QListWidget, QGroupBox, QLabel, QLineEdit
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtCore import QUrl, QTimer, pyqtSignal
@@ -10,6 +10,9 @@ from PyQt5.QtGui import QIcon
 from src.gui.utils import extract_widgets, button_style
 from src.gui.utils import convert_mappings_to_list_for_mainDisplay
 import config
+from scipy.io.wavfile import write
+import os
+from pathlib import Path
 
 
 class EEGAudioApp(QMainWindow):
@@ -17,6 +20,9 @@ class EEGAudioApp(QMainWindow):
 
     def __init__(self, eeg_daudio_data):
         super().__init__()
+        os.makedirs(config.OUTPUT_DIR_AUDIO, exist_ok=True)
+        os.makedirs(config.OUTPUT_DIR_EEG, exist_ok=True)
+        os.makedirs(config.OUTPUT_DIR_METADATA, exist_ok=True)
         self.EEG_AUDIO_DATA = eeg_daudio_data
         self.MAPPINGS = self.EEG_AUDIO_DATA.MappingEEGEventsWithMarkers
 
@@ -151,12 +157,17 @@ class EEGAudioApp(QMainWindow):
             self.audio_index = end_index
 
     def play_audio(self):
-        self.audio_data, self.sample_rate = sf.read("/home/owais/GitHub/21-05-2024/EEGAnotator/audio_file.wav", dtype='int16')
+        self.audio_sample_rate = self.EEG_AUDIO_DATA.audio.SAMPLING_FREQUENCY
+        write(self.audio_file_name_to_save_path, self.audio_sample_rate, self.audio_sample)
+        self.audio_data, self.sample_rate = sf.read(self.audio_file_name_to_save_path, dtype='int16')
         self.audio_index = 0
-        media_content = QMediaContent(QUrl.fromLocalFile("/home/owais/GitHub/21-05-2024/EEGAnotator/audio_file.wav"))
+        media_content = QMediaContent(QUrl.fromLocalFile(self.audio_file_name_to_save_path))
         self.mediaPlayer.setMedia(media_content)
         self.mediaPlayer.play()
         self.timer.start(30)
+        
+        
+
 
     def stop_audio(self):
         self.mediaPlayer.stop()
@@ -184,10 +195,44 @@ class EEGAudioApp(QMainWindow):
     def update_info_from_list_item(self):
         selected_item_text = self.listWidget.currentItem().text()
         info_parts = selected_item_text.split(",")
+        
+        
+        self.marker = info_parts[0]
+        self.word = info_parts[1]
+        self.eeg_start_index = int(info_parts[4])
+        self.eeg_end_index = int(info_parts[5])
+        self.duration = int(info_parts[7])
+        self.audio_start_index = int(info_parts[6])
+        self.audio_end_index = self.audio_start_index + int(
+            (self.duration/int(self.EEG_AUDIO_DATA.eeg.SAMPLING_FREQUENCY))*self.EEG_AUDIO_DATA.audio.SAMPLING_FREQUENCY)
+
+        self.audio_sample = self.EEG_AUDIO_DATA.audio.AUDIO[self.audio_start_index:self.audio_end_index]
+        #self.eeg_sample = self.EEG_AUDIO_DATA.eeg.RAW_DATA.copy()
+        self.eeg_sample, _ = self.eeg_sample[: self.eeg_start_index:self.eeg_end_index]
+        
+        self.channel_names = self.EEG_AUDIO_DATA.eeg.CHANNEL_NAMES
+        self.eeg_file_name_to_save_path = Path(config.OUTPUT_DIR_EEG, 'eeg ' + self.marker + self.word + str(self.eeg_start_index) + '.npy')
+        self.audio_file_name_to_save_path = Path(config.OUTPUT_DIR_AUDIO, 'audio ' + self.marker + self.word + str(self.eeg_start_index) + '.npy')
+        self.meta_data_file_name_to_save_path = Path(config.OUTPUT_DIR_METADATA, 'meta ' + self.marker + self.word + '.json' )
+        
+        print(
+            self.marker,
+            self.word,
+            self.eeg_start_index,
+            self.eeg_end_index,
+            self.duration,
+            self.audio_start_index,
+            self.audio_end_index,
+            self.eeg_file_name_to_save,
+            self.audio_file_name_to_save,
+            #self.eeg_sample.shape
+        )
+        print(self.eeg_sample.shape)
         widgets = extract_widgets(self.info_layout)
         count = 0
         for widget in widgets:
             if isinstance(widget, QLineEdit):
+                
                 widget.setText(info_parts[count])
                 count += 1
 

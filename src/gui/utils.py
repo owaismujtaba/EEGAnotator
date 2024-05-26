@@ -7,7 +7,6 @@ text_box_style = """
                         color: "#444";
                         border: 2px solid #999;
                         border-radius: 5px;
-                        #background-color: #f5f5f5;
                         background-color: #f5f5f5;
                         font-family: Arial, sans-serif;
                         font-weight: bold;
