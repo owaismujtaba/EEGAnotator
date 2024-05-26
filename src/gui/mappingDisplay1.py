@@ -1,13 +1,12 @@
-from PyQt5.QtWidgets import QLabel, QLineEdit
 import sys
 import numpy as np
 import soundfile as sf
 import pyqtgraph as pg
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QListWidget, QGroupBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QListWidget, QGroupBox, QLabel, QLineEdit
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtCore import QUrl, QTimer, pyqtSignal
-from src.gui.utils import text_box_style, label_style, button_style, combobox_style
-
+from src.gui.utils import extract_widgets, button_style
+# Global style for buttons
 
 class EEGAudioApp(QMainWindow):
     about_to_close = pyqtSignal()
@@ -27,7 +26,7 @@ class EEGAudioApp(QMainWindow):
         # Main widget
         self.main_widget = QWidget()
         self.setCentralWidget(self.main_widget)
-        self.setGeometry(500, 300, 1200, 300)
+        self.setGeometry(500, 300, 1200, 200)
         # Layouts
         main_layout = QVBoxLayout()
         top_layout = QHBoxLayout()
@@ -73,18 +72,42 @@ class EEGAudioApp(QMainWindow):
         audio_control_layout.addWidget(self.stop_button)
 
         # Add some labels and line edits to display list item contents
-        self.item_info_label = QLabel("Selected Item Info:")
-        self.item_info_lineedit = QLineEdit()
-        self.item_info_lineedit.setReadOnly(True)
-        bottom_layout.addWidget(self.item_info_label)
-        bottom_layout.addWidget(self.item_info_lineedit)
+        '''
+        self.info_labels = []
+        self.info_lineedits = []
+        info_layout = QVBoxLayout()
+        for i in range(3):
+            info_row_layout = QHBoxLayout()
+            label = QLabel(f"Info {i+1}:")
+            lineedit = QLineEdit()
+            lineedit.setReadOnly(True)
+            self.info_labels.append(label)
+            self.info_lineedits.append(lineedit)
+            info_row_layout.addWidget(label)
+            info_row_layout.addWidget(lineedit)
+            info_layout.addLayout(info_row_layout)
+        '''
+        #bottom_layout.addLayout(info_layout)
+        bottom_layout.addLayout(audio_control_layout)
 
-        # Text box for output directory name
-        self.output_dir_label = QLabel("Output Directory:")
-        self.output_dir_lineedit = QLineEdit()
-        bottom_layout.addWidget(self.output_dir_label)
-        bottom_layout.addWidget(self.output_dir_lineedit)
+        ## 
+        self.labels = ["Action:", "Word:", "Start Time(EEG):", "End Time(EEG):", "Start Index(EEG):", "End Index(EEG):", "Start Index(Audio):", "Duration:", "Start Time(Audio):"]
+        self.info_layout = QVBoxLayout()
+        count = 0
+        for i in range(3):
+            hbox1 = QHBoxLayout()
+            hbox2 = QHBoxLayout()
 
+            for j in range(3):
+                label = QLabel(self.labels[count])
+                count +=1
+                text_box = QLineEdit()
+                hbox1.addWidget(label)
+                hbox2.addWidget(text_box)
+                
+            self.info_layout.addLayout(hbox1)
+            self.info_layout.addLayout(hbox2)
+        bottom_layout.addLayout(self.info_layout)
         # Navigation buttons
         button_layout = QHBoxLayout()
         self.prev_button = QPushButton("Previous")
@@ -104,7 +127,6 @@ class EEGAudioApp(QMainWindow):
         button_layout.addWidget(self.discard_button)
         button_layout.addWidget(self.save_button)
 
-        bottom_layout.addLayout(audio_control_layout)
         bottom_layout.addStretch()
         bottom_layout.addLayout(button_layout)
 
@@ -156,7 +178,7 @@ class EEGAudioApp(QMainWindow):
         print("Previous button clicked")
 
     def next_action(self):
-        print("Next button clicked")
+                print("Next button clicked")
 
     def discard_action(self):
         print("Discard button clicked")
@@ -165,8 +187,14 @@ class EEGAudioApp(QMainWindow):
         print("Save button clicked")
 
     def on_list_item_changed(self, current, previous):
-        if current is not None:
-            item_text = current.text()
-            self.item_info_lineedit.setText(item_text)
-            # You can parse the item_text further to display specific information if needed
-            print(f"Selected: {item_text}")
+        selected_item_text = self.listWidget.currentItem().text()
+        info_parts = selected_item_text.split(", ")
+        print(info_parts)
+
+        widgets = extract_widgets(self.info_layout)
+        count = 0
+        for widget in widgets:
+            if isinstance(widget, QLineEdit):
+                 widget.setText(info_parts[count])
+                 count +=1
+

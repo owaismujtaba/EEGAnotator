@@ -36,7 +36,7 @@ class EEG_AUDIO_DATA:
         self.AudioMarkerStartTime = self.audio.MARKERS_TIME_STAMPS[0]
         
         self.NearestEEGStartPointToAudio = find_closest_starting_point_in_eeg(
-            self.eeg.EVENTS, self.audio_marker_start_time
+            self.eeg.EVENTS, self.AudioMarkerStartTime
         )
 
         self.MappingEEGEventsWithMarkers = self.map_eeg_actions_to_marker_words(

@@ -1,3 +1,7 @@
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QListWidget, QGroupBox, QLabel, QLineEdit
+
+
+
 
 text_box_style = """
                         color: "#444";
@@ -13,21 +17,24 @@ label_style = """
                     border: 0px solid black; 
                     border-radius: 5px;
                     font-size: 14px;
-                    font-weight: bold
+                    font-weight: bold;
+                    color: #555555
                 """
 button_style = """
-                QPushButton {
-                    background-color: #ff6666;
-                    color: black;
-                    border-radius: 5px;
-                    padding: 5px;
-                    border: 1px solid #999;
-                    font-weight: bold;
-                }
-                QPushButton:hover {
-                    background-color: #ff9999;
-                }
-            """
+            QPushButton { 
+                background-color: #B0C4DE;
+                color: black;
+                border-style: outset; 
+                border-width: 2px; 
+                border-radius: 5px; 
+                border-color: beige; padding: 4px; 
+                font-weight: bold
+            } 
+            
+            QPushButton:pressed { 
+                background-color: #5F9EA0; 
+                border-style: inset; }"
+        """
 combobox_style = """
                     color: #444; 
                     font-weight: bold; 
@@ -53,3 +60,16 @@ def convert_eeg_events_to_list(events):
         duration = row[5]
         output_list.append(f"{action} ::: {start_time}  :::     {end_time} ::: {start_index} ::: {end_index} ::: {duration}")
     return output_list
+
+
+def extract_widgets(layout):
+    widgets = []
+    for i in range(layout.count()):
+        item = layout.itemAt(i)
+        if isinstance(item, QHBoxLayout):
+            widgets.extend(extract_widgets(item))
+        elif isinstance(item, QWidget):
+            widgets.extend(extract_widgets(item.layout()))
+        elif isinstance(item.widget(), QLabel) or isinstance(item.widget(), QLineEdit):
+            widgets.append(item.widget())
+    return widgets
