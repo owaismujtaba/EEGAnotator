@@ -12,7 +12,7 @@ class EEGAudioApp(QMainWindow):
     about_to_close = pyqtSignal()
 
     def __init__(self, x):
-        super().__init__()
+        super().__init__(eeg_data, audio_data)
         self.initUI()
         
         # Audio visualizer variables
@@ -20,7 +20,7 @@ class EEGAudioApp(QMainWindow):
         self.sample_rate = None
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_audio_plot)
-        self.audio_index = 0
+        
 
     def initUI(self):
         # Main widget
