@@ -96,7 +96,7 @@ class EEG_DATA:
         self.SAMPLING_FREQUENCY = self.RAW_DATA.info['sfreq']
         self.TRIGGERS = self.RAW_DATA['TRIG'][0][0]
         self.DURATION = self.RAW_DATA.n_times / self.SAMPLING_FREQUENCY
-        self.TIME_STAMPS = self.RAW_DATA.times
+        self.TIME_STAMPS = self.RAW_DATA.times + self.RAW_DATA.info['meas_date'].timestamp()
         
 
     def preprocess_eeg_data(self):

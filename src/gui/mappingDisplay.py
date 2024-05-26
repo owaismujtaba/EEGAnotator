@@ -2,17 +2,18 @@ import sys
 import numpy as np
 import soundfile as sf
 import pyqtgraph as pg
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QListWidget, QGroupBox
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtCore import QUrl, QTimer, pyqtSignal
+from src.gui.utils import text_box_style, label_style, button_style, combobox_style
+
+
 
 class EEGAudioApp(QMainWindow):
     about_to_close = pyqtSignal()
 
-    def __init__(self, EEG_AUDIO_DATA):
+    def __init__(self, x):
         super().__init__()
-
-        self.EEG_AUDIO_DATA = EEG_AUDIO_DATA
         self.initUI()
         
         # Audio visualizer variables
@@ -26,30 +27,44 @@ class EEGAudioApp(QMainWindow):
         # Main widget
         self.main_widget = QWidget()
         self.setCentralWidget(self.main_widget)
-        
+        self.setGeometry(500, 300, 1200, 300)
         # Layouts
         main_layout = QVBoxLayout()
         top_layout = QHBoxLayout()
         bottom_layout = QHBoxLayout()
 
+        # List Widget for displaying items with title
+        list_group_box = QGroupBox("Mappings")
+        list_layout = QVBoxLayout()
+        self.listWidget = QListWidget()
+        self.listWidget.addItems(["Item 1", "Item 2", "Item 3"])  # Add items to the list
+        self.listWidget.currentItemChanged.connect(self.on_list_item_changed)
+        list_layout.addWidget(self.listWidget)
+        list_group_box.setLayout(list_layout)
+
         # EEG plot setup
         self.plotWidget = pg.PlotWidget(title="EEG Activity")
         self.plotWidget.setBackground('w')  # Set background color to white
-        self.plotDataItem = self.plotWidget.plot()
+        self.plotWidget.getPlotItem().showGrid(True, True)  # Show grid
+        self.plotDataItem = self.plotWidget.plot(pen='b')  # Set pen color to blue
         self.update_eeg_plot()
 
         # Audio plot setup
         self.audioPlotWidget = pg.PlotWidget(title="Audio Visualizer")
         self.audioPlotWidget.setBackground('g')  # Set background color to green
-        self.audioPlotDataItem = self.audioPlotWidget.plot()
-        
+        self.audioPlotWidget.getPlotItem().showGrid(True, True)  # Show grid
+        self.audioPlotDataItem = self.audioPlotWidget.plot(pen='y')  # Set pen color to yellow
+
+        top_layout.addWidget(list_group_box)
         top_layout.addWidget(self.plotWidget)
         top_layout.addWidget(self.audioPlotWidget)
 
         # Audio control buttons
         audio_control_layout = QHBoxLayout()
         self.play_button = QPushButton("Play")
+        self.play_button.setStyleSheet(button_style)
         self.stop_button = QPushButton("Stop")
+        self.stop_button.setStyleSheet(button_style)
         self.play_button.clicked.connect(self.play_audio)
         self.stop_button.clicked.connect(self.stop_audio)
         audio_control_layout.addWidget(self.play_button)
@@ -58,9 +73,13 @@ class EEGAudioApp(QMainWindow):
         # Navigation buttons
         button_layout = QHBoxLayout()
         self.prev_button = QPushButton("Previous")
+        self.prev_button.setStyleSheet(button_style)
         self.next_button = QPushButton("Next")
+        self.next_button.setStyleSheet(button_style)
         self.discard_button = QPushButton("Discard")
+        self.discard_button.setStyleSheet(button_style)
         self.save_button = QPushButton("Save")
+        self.save_button.setStyleSheet(button_style)
         self.prev_button.clicked.connect(self.prev_action)
         self.next_button.clicked.connect(self.next_action)
         self.discard_button.clicked.connect(self.discard_action)
@@ -129,4 +148,8 @@ class EEGAudioApp(QMainWindow):
 
     def save_action(self):
         print("Save button clicked")
+
+    def on_list_item_changed(self, current, previous):
+        print(f"Selected: {current.text()}")
+
 

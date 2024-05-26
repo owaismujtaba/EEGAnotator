@@ -10,6 +10,7 @@ from src.code.eeg import EEG_DATA
 from src.code.audio import AUDIO_DATA
 from src.gui.mappingDisplay import EEGAudioApp
 from src.utils import EEG_AUDIO_DATA
+from src.gui.utils import text_box_style, label_style, button_style, combobox_style
 
 class LoadEEGThread(QThread):
     finished = pyqtSignal(object)
@@ -58,42 +59,6 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(self.main_layout)
 
         right_left_widget_style = "border: 2px solid #ccc; border-radius: 5px; background-color: #f0f0f0;"
-        text_box_style = """
-                        color: "#444";
-                        border: 2px solid #999;
-                        border-radius: 5px;
-                        background-color: #f5f5f5;
-                        font-family: Arial, sans-serif;
-                        font-weight: bold;
-                        font-size: 14px;
-                    """        
-        label_style = """
-                    font-weight: bold; 
-                    border: 0px solid black; 
-                    border-radius: 5px;
-                    font-size: 14px;
-                    font-weight: bold
-                """
-        button_style = """
-                QPushButton {
-                    background-color: #ff6666;
-                    color: black;
-                    border-radius: 5px;
-                    padding: 5px;
-                    border: 1px solid #999;
-                    font-weight: bold;
-                }
-                QPushButton:hover {
-                    background-color: #ff9999;
-                }
-            """
-        combobox_style = """
-                    color: #444; 
-                    font-weight: bold; 
-                    background-color: #ff9999; 
-                    border: 2px solid #999; 
-                    border-radius: 5px
-                """
 
 
         ##############################################################################################

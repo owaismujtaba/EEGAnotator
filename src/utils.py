@@ -22,10 +22,10 @@ def find_closest_starting_point_in_eeg(eeg_events, timestamp):
     1
     """
 
+    timestamp = timestamp + 7200 # adjusting the difference in time
     eeg_timestamps = [item[1] for item in eeg_events]
     diff = abs(np.array(eeg_timestamps) - timestamp)
     close_index = np.argmin(diff)
-    
     return close_index
 
 
@@ -33,7 +33,7 @@ class EEG_AUDIO_DATA:
     def __init__(self, eeg_data_obj, audio_data_object) -> None:
         self.eeg = eeg_data_obj
         self.audio = audio_data_object
-        self.audio_marker_start_time = self.audio.MARKERS_START_TIME
+        self.audio_marker_start_time = self.audio.MARKERS_TIME_STAMPS[0]
         
         self.NearestEEGStartPointToAudio = find_closest_starting_point_in_eeg(
             self.eeg.EVENTS, self.audio_marker_start_time
@@ -48,7 +48,9 @@ class EEG_AUDIO_DATA:
     def map_eeg_actions_to_marker_words(self, start_timestamp_eeg, eeg_events, markers_words_timestamps):
         """
             Maps EEG actions to corresponding marker words and timestamps.
-
+            
+            Key Point : Assuming we have all the markers in the xdf file. No missings.
+            
             Args:
                 - start_timestamp_eeg (int): The starting index for processing EEG events.
                 - eeg_events (list of tuples): A list of EEG events where each event is represented as a tuple:

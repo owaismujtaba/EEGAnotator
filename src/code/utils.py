@@ -5,17 +5,6 @@ import pdb
 import pandas as pd
 
 
-
-
-
-
-
-
-
-
-
-
-
 #**************************************AUDIO RELATED FUNCTIONS**************************************
 
 def bundle_audio_markers_with_timestamps(markers, marker_timestamps, audio_timestamps):
