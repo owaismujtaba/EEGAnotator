@@ -232,14 +232,15 @@ class EEGAudioApp(QMainWindow):
             self.update_info_from_list_item()
 
     def save_action(self):
-        meta_data = {'audio_file_name': self.audio_file_name_to_save_path, 'eeg_file_name':self.eeg_file_name_to_save_path,
+        meta_data = {'audio_file_name': str(self.audio_file_name_to_save_path), 'eeg_file_name':str(self.eeg_file_name_to_save_path),
                      'Action':self.marker, 'word': self.word, 'eeg_start_index':self.eeg_start_index,
                         'eeg_end_index': self.eeg_end_index, 'audio_start_index': self.audio_start_index,
                         'audio_end_index':self.audio_end_index 
                     }
-        with open(str(self.meta_data_file_name_to_save_path), 'w') as json_file:
+        with open(self.meta_data_file_name_to_save_path, 'w') as json_file:
             json.dump(meta_data, json_file)
-        print(self.eeg_sample)
+        self.audio_sample.save(self.audio_file_name_to_save_path)
+        #self.
 
     def update_info_from_list_item(self):
         selected_item_text = self.listWidget.currentItem().text()
