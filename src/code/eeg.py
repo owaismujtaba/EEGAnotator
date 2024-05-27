@@ -1,11 +1,11 @@
 import config as config
 import numpy as np
-from src.code.utils import load_edf_file
-from src.code.utils import normalize_eeg_triggers
-from src.code.utils import eeg_events_mapping
-from src.code.utils import correct_eeg_triggers
-from src.code.utils import eeg_transition_trigger_points
-from src.code.utils import convert_eeg_unix_timestamps_to_datetime
+from code.utils import load_edf_file
+from code.utils import normalize_eeg_triggers
+from code.utils import eeg_events_mapping
+from code.utils import correct_eeg_triggers
+from code.utils import eeg_transition_trigger_points
+from code.utils import convert_eeg_unix_timestamps_to_datetime
 
 
 def check_interruptions(raw_data, sfreq):

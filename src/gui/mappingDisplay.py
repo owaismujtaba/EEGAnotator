@@ -9,8 +9,8 @@ from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtCore import Qt, QUrl, QTimer, pyqtSignal, QThread
 from PyQt5.QtGui import QIcon
 
-from src.gui.utils import extract_widgets, button_style
-from src.gui.utils import convert_mappings_to_list_for_mainDisplay
+from gui.utils import extract_widgets, button_style
+from gui.utils import convert_mappings_to_list_for_mainDisplay
 import config as config
 from scipy.io.wavfile import write
 import os
@@ -319,7 +319,7 @@ class EEGAudioApp(QMainWindow):
         self.audio_file_name_to_save_path = Path(config.OUTPUT_DIR_AUDIO, f'{self.marker}_{self.word}_{self.eeg_start_index}.npy')
         self.audio_file_name_to_save_path_wav = Path(config.OUTPUT_DIR_AUDIO, f'{self.marker}_{self.word}_{self.eeg_start_index}.wav')
         self.meta_data_file_name_to_save_path = Path(config.OUTPUT_DIR_METADATA, f'{self.marker}_{self.word}.json')
-       
+        
         info_parts[2] = str(np.array(float(info_parts[2])).astype('datetime64[s]'))
         info_parts[3] = str(np.array(float(info_parts[3])).astype('datetime64[s]'))
         info_parts[8] = str(np.array(float(info_parts[8])).astype('datetime64[s]'))

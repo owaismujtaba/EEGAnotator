@@ -6,12 +6,12 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon,  QPixmap
 
-from src.gui.utils import get_file_name_from_path, convert_eeg_events_to_list
-from src.code.eeg import EEG_DATA
-from src.code.audio import AUDIO_DATA
-from src.gui.mappingDisplay import EEGAudioApp
-from src.utils import EEG_AUDIO_DATA
-from src.gui.utils import text_box_style, label_style, button_style, combobox_style
+from gui.utils import get_file_name_from_path, convert_eeg_events_to_list
+from code.eeg import EEG_DATA
+from code.audio import AUDIO_DATA
+from gui.mappingDisplay import EEGAudioApp
+from utils import EEG_AUDIO_DATA
+from gui.utils import text_box_style, label_style, button_style, combobox_style
 import config as config
 
 
