@@ -4,15 +4,15 @@ from PyQt5.QtWidgets import (
     QMessageBox,  QLineEdit,  QListWidget
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QIcon, QPalette, QBrush, QPixmap
+from PyQt5.QtGui import QIcon,  QPixmap
 
 from src.gui.utils import get_file_name_from_path, convert_eeg_events_to_list
 from src.code.eeg import EEG_DATA
 from src.code.audio import AUDIO_DATA
-from src.gui.mappingDisplay1 import EEGAudioApp
+from src.gui.mappingDisplay import EEGAudioApp
 from src.utils import EEG_AUDIO_DATA
 from src.gui.utils import text_box_style, label_style, button_style, combobox_style
-import config
+import config as config
 
 
 class LoadEEGThread(QThread):
@@ -127,7 +127,7 @@ class MainWindow(QMainWindow):
         #***********************************ROW 2***********************************
         self.eeg_file_name_label = QLabel('EEG (.edf) File :')
         self.eeg_file_name_label.setStyleSheet(label_style)
-        self.eeg_file_name_textbox = QLineEdit('Filename will appear hear when you successfully select the xdf file')
+        self.eeg_file_name_textbox = QLineEdit('Filename will appear hear!!!')
         self.eeg_file_name_textbox.setReadOnly(True)
         self.eeg_file_name_textbox.setStyleSheet(text_box_style)
         self.eeg_select_file_button = QPushButton('Select File')
@@ -306,9 +306,9 @@ class MainWindow(QMainWindow):
         self.right_layout_section_1.addWidget(header_label)
 
         #***********************************ROW 2***********************************
-        self.audio_file_name_label = QLabel('AUDIO (.edf) File :')
+        self.audio_file_name_label = QLabel('AUDIO (.xdf) File :')
         self.audio_file_name_label.setStyleSheet(label_style)
-        self.audio_file_name_textbox = QLineEdit('Filename will appear hear when you successfully select the xdf file')
+        self.audio_file_name_textbox = QLineEdit('Filename will appear hear!!! ')
         self.audio_file_name_textbox.setReadOnly(True)
         self.audio_file_name_textbox.setStyleSheet(text_box_style)
         self.audio_select_file_button = QPushButton('Select File')

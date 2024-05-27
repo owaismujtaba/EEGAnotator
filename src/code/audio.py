@@ -1,7 +1,6 @@
-import pdb
 from src.code.utils import convert_audio_unix_timestamps_to_datetime
 from src.code.utils import load_xdf_file, calculate_time_gaps, bundle_audio_markers_with_timestamps
-import config
+import config as config
 
 class AUDIO_DATA:
     """

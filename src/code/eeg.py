@@ -1,5 +1,4 @@
-import config
-import pdb
+import config as config
 import numpy as np
 from src.code.utils import load_edf_file
 from src.code.utils import normalize_eeg_triggers
