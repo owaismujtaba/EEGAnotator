@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QListWidget, QGroupBox, QLabel, QLineEdit
+from PyQt5.QtWidgets import  QHBoxLayout, QWidget, QLabel, QLineEdit
 
 
 #background-color: rgba(255, 255, 255, 0)

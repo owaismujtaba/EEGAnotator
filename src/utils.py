@@ -1,5 +1,7 @@
 
 import numpy as np
+
+
 def find_closest_starting_point_in_eeg(eeg_events, timestamp):
     """
     Finds the closest starting point in EEG events to a given timestamp.

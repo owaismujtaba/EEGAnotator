@@ -1,8 +1,7 @@
 import numpy as np
 import pyxdf
 import mne
-import pdb
-import pandas as pd
+import datetime
 
 
 #**************************************AUDIO RELATED FUNCTIONS**************************************
@@ -401,11 +400,11 @@ def convert_eeg_unix_timestamps_to_datetime(timestamps, start):
     array(['2022-05-25T00:00:57.000', '2022-05-25T00:00:58.000',
            '2022-05-25T00:00:59.000'], dtype='datetime64[ms]')
     """
+    
+    #timestamps *= 1000
+    return timestamps.astype('datetime64[s]')
 
-    start = start.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
-    datetime_objects = np.datetime64(start, 'ms') + (timestamps * 1000).astype('timedelta64[ms]')
-
-    return datetime_objects
+    #return datetime_objects
 
 def load_edf_file(filepath):
     """
@@ -432,7 +431,7 @@ def load_edf_file(filepath):
     
     # Use mne library to read the raw EEG data from the EDF file
     print(filepath)
-    streams = mne.io.read_raw_edf(filepath)
+    streams = mne.io.read_raw_edf(filepath, preload=True)
     print('*******************************Completed*******************************')
 
     return streams

@@ -3,19 +3,48 @@ import pyqtgraph as pg
 import soundfile as sf
 from PyQt5.QtWidgets import (
     QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget,
-    QListWidget, QGroupBox, QLabel, QLineEdit
+    QListWidget, QGroupBox, QLabel, QLineEdit, QMessageBox, QApplication
 )
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
-from PyQt5.QtCore import QUrl, QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, QUrl, QTimer, pyqtSignal, QThread
 from PyQt5.QtGui import QIcon
 
-from src.gui.utils import extract_widgets, button_style
-from src.gui.utils import convert_mappings_to_list_for_mainDisplay
-import config
+from gui.utils import extract_widgets, button_style
+from gui.utils import convert_mappings_to_list_for_mainDisplay
+import config as config
 from scipy.io.wavfile import write
 import os
 from pathlib import Path
 import json
+import os
+
+
+class SaveWorker(QThread):
+    finished = pyqtSignal()
+    error = pyqtSignal(str)
+    def __init__(self, app):
+        super().__init__()
+        self.app = app
+
+    def run(self):
+        try:
+            meta_data = {
+                'audio_file_name': str(self.app.audio_file_name_to_save_path),
+                'eeg_file_name': str(self.app.eeg_file_name_to_save_path),
+                'Action': self.app.marker,
+                'word': self.app.word,
+                'eeg_start_index': self.app.eeg_start_index,
+                'eeg_end_index': self.app.eeg_end_index,
+                'audio_start_index': self.app.audio_start_index,
+                'audio_end_index': self.app.audio_end_index,
+                'channel_names':self.app.channel_names
+            }
+            with open(str(self.app.meta_data_file_name_to_save_path), 'w') as json_file:
+                json.dump(meta_data, json_file)
+            np.save(self.app.audio_file_name_to_save_path, self.app.audio_sample)
+            self.finished.emit()
+        except Exception as e:
+            self.error.emit(str(e))
 
 
 class EEGAudioApp(QMainWindow):
@@ -101,7 +130,7 @@ class EEGAudioApp(QMainWindow):
         audio_plot_widget = pg.PlotWidget(title="Audio Visualizer")
         audio_plot_widget.setBackground('g')
         audio_plot_widget.getPlotItem().showGrid(True, True)
-        self.audioPlotDataItem = audio_plot_widget.plot(pen='y')
+        self.audioPlotDataItem = audio_plot_widget.plot(pen='red')
         
         return audio_plot_widget
 
@@ -201,10 +230,11 @@ class EEGAudioApp(QMainWindow):
 
     def play_audio(self):
         self.audio_sample_rate = self.EEG_AUDIO_DATA.audio.SAMPLING_FREQUENCY
-        write(self.audio_file_name_to_save_path, int(self.audio_sample_rate), self.audio_sample)
-        self.audio_data, self.sample_rate = sf.read(self.audio_file_name_to_save_path, dtype='int16')
+        if not os.path.exists(self.audio_file_name_to_save_path_wav):
+            write(self.audio_file_name_to_save_path_wav, int(self.audio_sample_rate), self.audio_sample)
+        self.audio_data, self.sample_rate = sf.read(self.audio_file_name_to_save_path_wav, dtype='int16')
         self.audio_index = 0
-        media_content = QMediaContent(QUrl.fromLocalFile(str(self.audio_file_name_to_save_path)))
+        media_content = QMediaContent(QUrl.fromLocalFile(str(self.audio_file_name_to_save_path_wav)))
         self.mediaPlayer.setMedia(media_content)
         self.mediaPlayer.play()
         self.timer.start(30)
@@ -232,15 +262,40 @@ class EEGAudioApp(QMainWindow):
             self.update_info_from_list_item()
 
     def save_action(self):
+        '''
         meta_data = {'audio_file_name': str(self.audio_file_name_to_save_path), 'eeg_file_name':str(self.eeg_file_name_to_save_path),
                      'Action':self.marker, 'word': self.word, 'eeg_start_index':self.eeg_start_index,
                         'eeg_end_index': self.eeg_end_index, 'audio_start_index': self.audio_start_index,
                         'audio_end_index':self.audio_end_index 
                     }
-        with open(self.meta_data_file_name_to_save_path, 'w') as json_file:
+        with open(str(self.meta_data_file_name_to_save_path), 'w') as json_file:
             json.dump(meta_data, json_file)
         self.audio_sample.save(self.audio_file_name_to_save_path)
         #self.
+        '''
+        self.save_message_box = self.show_waiting_message('Saving files')
+        self.save_message_box.setWindowTitle("Saving")
+        self.save_worker = SaveWorker(self)
+        self.save_worker.finished.connect(self.on_save_finished)
+        self.save_worker.error.connect(self.on_save_error)
+        self.save_worker.start()
+
+    def on_save_error(self, error_message):
+        self.waiting_msg_box.accept()
+        QMessageBox.critical(self, "Error", f"Failed to load EEG data: {error_message}")
+
+    def show_waiting_message(self, message):
+        waiting_msg_box = QMessageBox()
+        waiting_msg_box.setText(message)
+        waiting_msg_box.setStandardButtons(QMessageBox.NoButton)
+        waiting_msg_box.setWindowFlags(Qt.Window | Qt.CustomizeWindowHint | Qt.WindowTitleHint)
+        waiting_msg_box.setWindowTitle('Processing')
+        waiting_msg_box.show()
+        QApplication.processEvents()
+        return waiting_msg_box
+    
+    def on_save_finished(self):
+        self.save_message_box.accept()
 
     def update_info_from_list_item(self):
         selected_item_text = self.listWidget.currentItem().text()
@@ -260,22 +315,14 @@ class EEGAudioApp(QMainWindow):
         self.eeg_sample = self.EEG_AUDIO_DATA.eeg.RAW_DATA[:self.eeg_start_index:self.eeg_end_index]
 
         self.channel_names = self.EEG_AUDIO_DATA.eeg.CHANNEL_NAMES
-        self.eeg_file_name_to_save_path = Path(config.OUTPUT_DIR_EEG, f'eeg_{self.marker}_{self.word}_{self.eeg_start_index}.npy')
-        self.audio_file_name_to_save_path = Path(config.OUTPUT_DIR_AUDIO, f'audio_{self.marker}_{self.word}_{self.eeg_start_index}.npy')
-        self.meta_data_file_name_to_save_path = Path(config.OUTPUT_DIR_METADATA, f'meta_{self.marker}_{self.word}.json')
-
-        print(
-            self.marker,
-            self.word,
-            self.eeg_start_index,
-            self.eeg_end_index,
-            self.duration,
-            self.audio_start_index,
-            self.audio_end_index,
-            self.eeg_file_name_to_save_path,
-            self.audio_file_name_to_save_path
-        )
-        import pdb
+        self.eeg_file_name_to_save_path = Path(config.OUTPUT_DIR_EEG, f'{self.marker}_{self.word}_{self.eeg_start_index}.npy')
+        self.audio_file_name_to_save_path = Path(config.OUTPUT_DIR_AUDIO, f'{self.marker}_{self.word}_{self.eeg_start_index}.npy')
+        self.audio_file_name_to_save_path_wav = Path(config.OUTPUT_DIR_AUDIO, f'{self.marker}_{self.word}_{self.eeg_start_index}.wav')
+        self.meta_data_file_name_to_save_path = Path(config.OUTPUT_DIR_METADATA, f'{self.marker}_{self.word}.json')
+        
+        info_parts[2] = str(np.array(float(info_parts[2])).astype('datetime64[s]'))
+        info_parts[3] = str(np.array(float(info_parts[3])).astype('datetime64[s]'))
+        info_parts[8] = str(np.array(float(info_parts[8])).astype('datetime64[s]'))
         
         
         widgets = extract_widgets(self.info_layout)
