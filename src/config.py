@@ -1,18 +1,18 @@
 import os
 from pathlib import Path
 
-CUR_DIR = os.getcwd()
-IMAGE_DIR = Path(CUR_DIR, 'src', 'gui')
-IMAGE_DIR = Path(IMAGE_DIR, 'Images')
+CurDir  = os.getcwd()
+ImageDir  = Path(CurDir, 'src', 'gui')
+ImageDir  = Path(ImageDir , 'Images')
 
-GAP_INTERVAL_AUDIO_MARKER = 1.5
-INTERRUPTION_INTERVAL_EEG = 2.0
+GapIntervalAudioMarker  = 1.5
+InterruptionIntervalEEG  = 2.0
 
-WINDOW_ICON_PATH = str(Path(IMAGE_DIR, 'icon.bmp'))
-BACKGROUND_IMAGE_PATH = str(Path(IMAGE_DIR, 'background.jpg'))
+WindowIconPath  = str(Path(ImageDir , 'icon.bmp'))
+BackgroundImagePath  = str(Path(ImageDir , 'background.jpg'))
 
-OUTPUT_DIR = 'Extracted'
-OUTPUT_DIR = Path(CUR_DIR, OUTPUT_DIR)
-OUTPUT_DIR_METADATA = Path(OUTPUT_DIR, 'MATADATA')
-OUTPUT_DIR_EEG = Path(OUTPUT_DIR, 'EEG')
-OUTPUT_DIR_AUDIO = Path(OUTPUT_DIR, 'AUDIO')
+OutputDir = 'Extracted'
+OutputDir  = Path(CurDir, OutputDir )
+OutputDirMetadata  = Path(OutputDir , 'MATADATA')
+OutputDirEEG  = Path(OutputDir , 'EEG')
+OutputDirAudio  = Path(OutputDir , 'AUDIO')

@@ -1,128 +1,128 @@
-from code.utils import convert_audio_unix_timestamps_to_datetime
-from code.utils import load_xdf_file, calculate_time_gaps, bundle_audio_markers_with_timestamps
+from code.utils import ConvertAudioUnixTimestampsToDatetime
+from code.utils import LoadXdfFile, CalculateTimeGaps, BundleAudioMarkersWithTimestamps
 import config as config
 
-class AUDIO_DATA:
+class AudioData:
     """
     A class to represent XDF (AUDIO and MARKER) data.
     """
-    def __init__(self, filepath_xdf) -> None:
+    def __init__(self, filePathXdf) -> None:
         """
-        Initialize an instance of the AUDIO_DATA class.
+        Initialize an instance of the AudioData class.
 
         Parameters:
-            - filepath_xdf (str): The filepath to the XDF (Extensible Data Format) file.
+            - filePathXdf (str): The filepath to the XDF (Extensible Data Format) file.
 
          Attributes:
-            - FILEPATH (str): The filepath to the XDF file.
-            - STREAMS (list): A list containing streams of data loaded from the XDF file.
-            - SAMPLING_FREQUENCY (float): The sampling frequency of the audio data.
-            - MARKERS (list): List of marker data.
-            - N_MARKERS (int): The total number of markers.
-            - MARKERS_TIME_STAMPS (list): List of Unix timestamps for marker data.
-            - MARKERS_TIME_STAMPS_REAL (list): List of datetime objects for marker data.
-            - MARKERS_START_TIME (datetime): The start time of the first marker.
-            - MARKERS_END_TIME (datetime): The end time of the last marker.
-            - MARKERS_DURATION (timedelta): Duration between the first and last marker.
-            - AUDIO (list): List containing audio data.
-            - AUDIO_TIME_STAMPS (list): List of Unix timestamps for audio sample times.
-            - AUDIO_TIME_STAMPS_REAL (list): List of datetime objects for audio sample times.
-            - AUDIO_START_TIME (datetime): The start time of the audio data.
-            - AUDIO_END_TIME (datetime): The end time of the audio data.
-            - AUDIO_DURATION (timedelta): Duration of the audio data.
-            - MARKERS_WORDS_TIMESTAMPS_AUDIO_STARTINDEX (list): List of tuples containing marker, word, marker timestamps, and corresponding audio sample start index.
-            - MARKER_TIME_GAPS (list): List of time gaps between marker data.
-            - N_GAPS_MARKERS (int): The total number of time gaps between marker data.
+            - FilePath (str): The filepath to the XDF file.
+            - Streams (list): A list containing streams of data loaded from the XDF file.
+            - SamplingFrequency (float): The sampling frequency of the audio data.
+            - Markers (list): List of marker data.
+            - NMarkers (int): The total number of markers.
+            - MarkersTimeStamps (list): List of Unix timestamps for marker data.
+            - MarkersTimeStampsReal (list): List of datetime objects for marker data.
+            - MarkersStartTime (datetime): The start time of the first marker.
+            - MarkersEndTime (datetime): The end time of the last marker.
+            - MarkersDuration (timedelta): Duration between the first and last marker.
+            - Audio (list): List containing audio data.
+            - AudioTimeStamps (list): List of Unix timestamps for audio sample times.
+            - AudioTimeStampsReal (list): List of datetime objects for audio sample times.
+            - AudioStartTime (datetime): The start time of the audio data.
+            - AudioEndTime (datetime): The end time of the audio data.
+            - AudioDuration (timedelta): Duration of the audio data.
+            - MarkersWordsTimestampsAudioStartIndex (list): List of tuples containing marker, word, marker timestamps, and corresponding audio sample start index.
+            - MarkerTimeGaps (list): List of time gaps between marker data.
+            - NGapsMarkers (int): The total number of time gaps between marker data.
         """
 
-        self.FILEPATH = filepath_xdf
-        self.STREAMS = None
-        self.SAMPLING_FREQUENCY = None
+        self.filePath = filePathXdf
+        self.streams = None
+        self.samplingFrequency = None
 
-        self.MARKERS = None
-        self.N_MARKERS = None
-        self.MARKERS_TIME_STAMPS = None
-        self.MARKERS_TIME_STAMPS_REAL = None
-        self.MARKERS_START_TIME = None
-        self.MARKERS_END_TIME = None
-        self.MARKERS_DURATION = None
+        self.markers = None
+        self.nMarkers = None
+        self.markersTimeStamps = None
+        self.markersTimeStampsReal = None
+        self.markersStartTime = None
+        self.markersEndTime = None
+        self.markersDuration = None
 
-        self.AUDIO = None
-        self.AUDIO_TIME_STAMPS = None
-        self.AUDIO_TIME_STAMPS_REAL = None
-        self.AUDIO_START_TIME = None
-        self.AUDIO_END_TIME = None
-        self.AUDIO_DURATION = None
+        self.audio = None
+        self.audioTimeStamps = None
+        self.audioTimeStampsReal = None
+        self.audioStartTime = None
+        self.audioEndTime = None
+        self.audioDuration = None
 
-        self.MARKER_TIME_GAPS = None
-        self.N_GAPS_MARKERS = None
+        self.markerTimeGaps = None
+        self.nGapsMarkers = None
 
-        self.load_audio_data()
-        self.preprocess_audio_data()
+        self.loadAudioData()
+        self.preprocessAudioData()
 
-    def load_audio_data(self):
+    def loadAudioData(self):
         """
         Load audio data from XDF file and initialize relevant attributes.
         """
         print('***************************Loading Audio data***************************')
 
-        self.STREAMS, header = load_xdf_file(self.FILEPATH)
-        self.SAMPLING_FREQUENCY = self.STREAMS[1]['info']['effective_srate']
-        self.MARKERS = self.STREAMS[0]['time_series']
-        self.MARKERS_TIME_STAMPS = self.STREAMS[0]['time_stamps']
-        self.MARKERS_START_TIME = self.MARKERS_TIME_STAMPS[0]
-        self.MARKERS_END_TIME = self.MARKERS_TIME_STAMPS[-1]
+        self.streams, header = LoadXdfFile(self.filePath)
+        self.samplingFrequency = self.streams[1]['info']['effective_srate']
+        self.markers = self.streams[0]['time_series']
+        self.markersTimeStamps = self.streams[0]['time_stamps']
+        self.markersStartTime = self.markersTimeStamps[0]
+        self.markersEndTime = self.markersTimeStamps[-1]
 
-        self.AUDIO = self.STREAMS[1]['time_series']
-        self.AUDIO_TIME_STAMPS = self.STREAMS[1]['time_stamps']
-        self.AUDIO_START_TIME = self.AUDIO_TIME_STAMPS[0]
-        self.AUDIO_END_TIME = self.AUDIO_TIME_STAMPS[-1]
+        self.audio = self.streams[1]['time_series']
+        self.audioTimeStamps = self.streams[1]['time_stamps']
+        self.audioStartTime = self.audioTimeStamps[0]
+        self.audioEndTime = self.audioTimeStamps[-1]
 
-        self.N_MARKERS = len(self.MARKERS)
+        self.nMarkers = len(self.markers)
 
-    def preprocess_audio_data(self):
+    def preprocessAudioData(self):
         """
         Preprocess audio data by converting timestamps and calculating time gaps between markers.
         """
         print('***************************Preprocessing Audio data***************************')
 
-        self.MARKERS_TIME_STAMPS_REAL = convert_audio_unix_timestamps_to_datetime(self.MARKERS_TIME_STAMPS)
-        self.MARKERS_START_TIME = self.MARKERS_TIME_STAMPS_REAL[0]
-        self.MARKERS_END_TIME = self.MARKERS_TIME_STAMPS_REAL[-1]
-        self.MARKERS_DURATION = self.MARKERS_END_TIME - self.MARKERS_START_TIME
+        self.markersTimeStampsReal = ConvertAudioUnixTimestampsToDatetime(self.markersTimeStamps)
+        self.markersStartTime = self.markersTimeStampsReal[0]
+        self.markersEndTime = self.markersTimeStampsReal[-1]
+        self.markersDuration = self.markersEndTime - self.markersStartTime
 
-        self.AUDIO_TIME_STAMPS_REAL = convert_audio_unix_timestamps_to_datetime(self.AUDIO_TIME_STAMPS)
-        self.AUDIO_START_TIME = self.AUDIO_TIME_STAMPS_REAL[0]
-        self.AUDIO_END_TIME = self.AUDIO_TIME_STAMPS_REAL[-1]
-        self.AUDIO_DURATION = self.AUDIO_END_TIME - self.AUDIO_START_TIME
-        self.MARKERS_WORDS_TIMESTAMPS_AUDIO_STARTINDEX = bundle_audio_markers_with_timestamps(self.MARKERS, self.MARKERS_TIME_STAMPS, self.AUDIO_TIME_STAMPS)
+        self.audioTimeStampsReal = ConvertAudioUnixTimestampsToDatetime(self.audioTimeStamps)
+        self.audioStartTime = self.audioTimeStampsReal[0]
+        self.audioEndTime = self.audioTimeStampsReal[-1]
+        self.audioDuration = self.audioEndTime - self.audioStartTime
+        self.markersWordsTimestampsAudioStartIndex = BundleAudioMarkersWithTimestamps(self.markers, self.markersTimeStamps, self.audioTimeStamps)
 
-        self.MARKER_TIME_GAPS, self.MARKER_TIME_GAPS_ITEMS = calculate_time_gaps(
-                                            self.MARKERS_TIME_STAMPS,
-                                            config.GAP_INTERVAL_AUDIO_MARKER
+        self.markerTimeGaps, self.markerTimeGapsItems = CalculateTimeGaps(
+                                            self.markersTimeStamps,
+                                            config.GapIntervalAudioMarker
                                         )
 
-        self.N_GAPS_MARKERS = len(self.MARKER_TIME_GAPS)
+        self.nGapsMarkers = len(self.markerTimeGaps)
 
-    def print_info(self):
+    def printInfo(self):
         """
         Print detailed information about the audio file and its attributes.
         """
         print('***************************Audio File Info***************************')
 
-        print("Filepath:", self.FILEPATH)
-        print("Sampling Frequency:", self.SAMPLING_FREQUENCY)
+        print("Filepath:", self.filePath)
+        print("Sampling Frequency:", self.samplingFrequency)
 
-        print("Marker Start Time:", self.MARKERS_START_TIME)
-        print("Marker End Time:", self.MARKERS_END_TIME)
-        print("No. of Markers:", self.N_MARKERS)
-        print("Marker Duration:", self.MARKERS_DURATION)
+        print("Marker Start Time:", self.markersStartTime)
+        print("Marker End Time:", self.markersEndTime)
+        print("No. of Markers:", self.nMarkers)
+        print("Marker Duration:", self.markersDuration)
 
-        print("Audio Start Time:", self.AUDIO_START_TIME)
-        print("Audio End Time:", self.AUDIO_END_TIME)
-        print("Audio Duration:", self.AUDIO_DURATION)
+        print("Audio Start Time:", self.audioStartTime)
+        print("Audio End Time:", self.audioEndTime)
+        print("Audio Duration:", self.audioDuration)
 
-        print("Marker Time Gaps:", self.MARKER_TIME_GAPS)
-        print("No. of Marker Time Gaps:", self.N_GAPS_MARKERS)
+        print("Marker Time Gaps:", self.markerTimeGaps)
+        print("No. of Marker Time Gaps:", self.nGapsMarkers)
 
         print('***************************************************************')

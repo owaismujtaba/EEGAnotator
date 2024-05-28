@@ -1,50 +1,48 @@
 import numpy as np
 import pyxdf
 import mne
-import datetime
+
 
 
 #**************************************AUDIO RELATED FUNCTIONS**************************************
 
-def bundle_audio_markers_with_timestamps(markers, marker_timestamps, audio_timestamps):
+def BundleAudioMarkersWithTimestamps(markers, markerTimestamps, audioTimestamps):
     """
     Bundles audio markers with corresponding timestamps.
 
     Parameters:
         - markers (list): List of marker data.
-        - marker_timestamps (list): List of timestamps corresponding to the markers.
-        - audio_timestamps (np.ndarray): Array of timestamps corresponding to the audio data.
+        - markerTimestamps (list): List of timestamps corresponding to the markers.
+        - audioTimestamps (np.ndarray): Array of timestamps corresponding to the audio data.
 
     Returns:
-        - marker_word_timestamp (list): List of lists containing marker action, marker word, timestamp, and audio start index.
+        - markerWordTimestamp (list): List of lists containing marker action, marker word, timestamp, and audio start index.
     """
-    print('***************************Started Bundling markers and audio timestamps***************************')
+    print('***************************Started bundling markers and audio timestamps***************************')
 
-    marker_word_timestamp = []
+    markerWordTimestamp = []
 
     # Pre-calculate the closest audio start indices for each marker timestamp
-    audio_indices = np.searchsorted(audio_timestamps, marker_timestamps)
-    audio_indices = np.clip(audio_indices, 1, len(audio_timestamps) - 1)
-    left_distances = abs(audio_timestamps[audio_indices - 1] - marker_timestamps)
-    right_distances = abs(audio_timestamps[audio_indices] - marker_timestamps)
-    closest_indices = np.where(left_distances <= right_distances, audio_indices - 1, audio_indices)
+    audioIndices = np.searchsorted(audioTimestamps, markerTimestamps)
+    audioIndices = np.clip(audioIndices, 1, len(audioTimestamps) - 1)
+    leftDistances = abs(audioTimestamps[audioIndices - 1] - markerTimestamps)
+    rightDistances = abs(audioTimestamps[audioIndices] - markerTimestamps)
+    closestIndices = np.where(leftDistances <= rightDistances, audioIndices - 1, audioIndices)
 
     for index in range(len(markers)):
-        marker_values = markers[index][0].split(':')
+        markerValues = markers[index][0].split(':')
 
-        marker_action = marker_values[0]
-        marker_word = marker_values[1] if len(marker_values) > 1 else '.'
-        timestamp = marker_timestamps[index]
-        audio_start_index = closest_indices[index]
+        markerAction = markerValues[0]
+        markerWord = markerValues[1] if len(markerValues) > 1 else '.'
+        timestamp = markerTimestamps[index]
+        audioStartIndex = closestIndices[index]
 
-        marker_word_timestamp.append([marker_action, marker_word, timestamp, audio_start_index])
+        markerWordTimestamp.append([markerAction, markerWord, timestamp, audioStartIndex])
 
-    return marker_word_timestamp
+    return markerWordTimestamp
 
 
-    return marker_word_timestamp
-
-def convert_audio_unix_timestamps_to_datetime(timestamps, start=None):
+def ConvertAudioUnixTimestampsToDatetime(timestamps, start=None):
     """
     Convert Unix timestamps to datetime objects using NumPy vectorized operations.
 
@@ -54,18 +52,18 @@ def convert_audio_unix_timestamps_to_datetime(timestamps, start=None):
             If None, the default start time is '1970-01-01T00:00:00.000'.
 
     Returns:
-        datetime_objects (np.ndarray): Array of corresponding datetime objects.
+        datetimeObjects (np.ndarray): Array of corresponding datetime objects.
     """
     if start is None:
         start = '1970-01-01T00:00:00.000'
     else:
         start = np.datetime64(start) + np.timedelta64(2, 'h')  # Add two hours of delay
 
-    datetime_objects = np.datetime64(start, 'ms') + + np.timedelta64(2, 'h')+ (timestamps * 1000).astype('timedelta64[ms]')
+    datetimeObjects = np.datetime64(start, 'ms') + np.timedelta64(2, 'h') + (timestamps * 1000).astype('timedelta64[ms]')
 
-    return datetime_objects
+    return datetimeObjects
 
-def check_audio_markers(markers):
+def CheckAudioMarkers(markers):
     """
         This function checks if the sequences of audio markers follow the correct order.
         Each marker is expected to be a tuple where the first element is a string in the format 'Action:Word'.
@@ -79,12 +77,12 @@ def check_audio_markers(markers):
             tuple: A boolean indicating if all sequences are complete, and a list of lists with indices of incomplete sequences.
     """
 
-    print('Checking Audio Markers')
-    current_state = 'START'  
-    incomplete_indices = [] 
-    temp_wrong_indices = []  
+    print('Checking audio markers')
+    currentState = 'START'  
+    incompleteIndices = [] 
+    tempWrongIndices = []  
 
-    prev_word = None  
+    prevWord = None  
     word = None  
 
     for i, marker in enumerate(markers):
@@ -93,37 +91,37 @@ def check_audio_markers(markers):
             continue  
 
         action, word = event
-        prev_word = prev_word if prev_word is not None else word
+        prevWord = prevWord if prevWord is not None else word
 
-        if word != prev_word and current_state != 'START':
-            incomplete_indices.append(temp_wrong_indices.copy())
-            temp_wrong_indices.clear()
-            current_state = 'START'
+        if word != prevWord and currentState != 'START':
+            incompleteIndices.append(tempWrongIndices.copy())
+            tempWrongIndices.clear()
+            currentState = 'START'
 
-        temp_wrong_indices.append(i)  
+        tempWrongIndices.append(i)  
 
-        # State transitions based on the action and current state
-        if current_state == 'START' and action == 'StartReading':
-            current_state = 'StartReading'
-        elif current_state == 'StartReading' and action == 'EndReading':
-            current_state = 'EndReading'
-        elif current_state == 'EndReading' and action == 'StartSaying':
-            current_state = 'StartSaying'
-        elif current_state == 'StartSaying' and action == 'EndSaying':
-            current_state = 'START'
-            temp_wrong_indices.clear()  
+        # State transitions based on the action and currentState
+        if currentState == 'START' and action == 'StartReading':
+            currentState = 'StartReading'
+        elif currentState == 'StartReading' and action == 'EndReading':
+            currentState = 'EndReading'
+        elif currentState == 'EndReading' and action == 'StartSaying':
+            currentState = 'StartSaying'
+        elif currentState == 'StartSaying' and action == 'EndSaying':
+            currentState = 'START'
+            tempWrongIndices.clear()  
         else:
-            incomplete_indices.append(temp_wrong_indices.copy())
-            temp_wrong_indices.clear()
-            current_state = 'START'
+            incompleteIndices.append(tempWrongIndices.copy())
+            tempWrongIndices.clear()
+            currentState = 'START'
 
-        prev_word = word  
+        prevWord = word  
 
-    result = len(incomplete_indices) == 0  
+    result = len(incompleteIndices) == 0  
 
-    return result, incomplete_indices
+    return result, incompleteIndices
 
-def load_xdf_file(filepath):
+def LoadXdfFile(filepath):
     """
         Load data from an XDF (Extensible Data Format) file.
 
@@ -149,7 +147,7 @@ def load_xdf_file(filepath):
 
 #**************************************EEG RELATED FUNCTIONS**************************************
 
-def eeg_transition_trigger_points(trigger_array):
+def EegTransitionTriggerPoints(triggerArray):
     """
     Identifies the transition points in an EEG trigger array.
 
@@ -159,24 +157,24 @@ def eeg_transition_trigger_points(trigger_array):
     indicating the positions of these transition points.
 
     Parameters:
-    trigger_array (np.ndarray): A 1D numpy array containing the trigger values from EEG data.
+    triggerArray (np.ndarray): A 1D numpy array containing the trigger values from EEG data.
 
     Returns:
     np.ndarray: An array of indexes where transitions occur in the trigger array. The first 
                 element of the returned array is always 0 to indicate the start of the array.
                 
     Example:
-    >>> trigger_array = np.array([0, 0, 1, 1, 0, 0, 1, 1, 0])
-    >>> eeg_transition_trigger_points(trigger_array)
+    >>> triggerArray = np.array([0, 0, 1, 1, 0, 0, 1, 1, 0])
+    >>> EegTransitionTriggerPoints(triggerArray)
     array([0, 2, 6])
     """
     
-    difference_array = np.where(np.diff(trigger_array) > 0)[0] + 1
-    transition_points_indexes = np.array([0] + difference_array.tolist())
+    differenceArray = np.where(np.diff(triggerArray) > 0)[0] + 1
+    transitionPointsIndexes = np.array([0] + differenceArray.tolist())
   
-    return transition_points_indexes
+    return transitionPointsIndexes
 
-def trigger_encodings(code):
+def TriggerEncodings(code):
     """
     Converts trigger codes into their corresponding marker names based on a predefined dictionary.
     If the exact code is not found, the closest code is used.
@@ -189,18 +187,18 @@ def trigger_encodings(code):
     code (int): Trigger code to be converted.
 
     Returns:
-    str: Corresponding marker name if the code is found in the dictionary. If the exact code is 
+        str: Corresponding marker name if the code is found in the dictionary. If the exact code is 
          not found, the marker name of the closest code is returned.
 
     Example:
-    >>> trigger_encodings(200)
+    >>> TriggerEncodings(200)
     'StartSaying'
 
-    >>> trigger_encodings(10)
+    >>> TriggerEncodings(10)
     'ExperimentEnded'
     """
     
-    marker_names = {
+    markerNames = {
         255: 'StartReading',
         224: 'EndReading',
         192: 'StartSaying',
@@ -213,17 +211,17 @@ def trigger_encodings(code):
         8: 'ExperimentEnded'
     }
 
-    marker_name = marker_names.get(code)
+    markerName = markerNames.get(code)
     
-    if marker_name:
-        return marker_name
+    if markerName:
+        return markerName
     
-    closest_code = min(marker_names.keys(), key=lambda k: abs(k - code))
-    closest_marker_name = marker_names[closest_code]
+    closestCode = min(markerNames.keys(), key=lambda k: abs(k - code))
+    closestMarkerName = markerNames[closestCode]
     
-    return closest_marker_name
+    return closestMarkerName
 
-def eeg_events_mapping(trigger_array, trigger_points, timestamps):
+def EegEventsMapping(triggerArray, triggerPoints, timestamps):
     """
     Maps EEG trigger values to their corresponding start and end points.
 
@@ -233,8 +231,8 @@ def eeg_events_mapping(trigger_array, trigger_points, timestamps):
     name, start timestamp, end timestamp, start index, end index, and duration.
 
     Parameters:
-    trigger_array (np.ndarray): An array of trigger values recorded during the EEG session.
-    trigger_points (np.ndarray): An array of indexes in the trigger values array where the trigger values change.
+    triggerArray (np.ndarray): An array of trigger values recorded during the EEG session.
+    triggerPoints (np.ndarray): An array of indexes in the trigger values array where the trigger values change.
     timestamps (np.ndarray): An array of timestamps corresponding to the trigger values.
 
     Returns:
@@ -247,29 +245,29 @@ def eeg_events_mapping(trigger_array, trigger_points, timestamps):
         - Duration (int)
     
     Example:
-    >>> trigger_array = np.array([0, 0, 1, 1, 0, 0, 2, 2, 0])
-    >>> trigger_points = np.array([0, 2, 6])
+    >>> triggerArray = np.array([0, 0, 1, 1, 0, 0, 2, 2, 0])
+    >>> triggerPoints = np.array([0, 2, 6])
     >>> timestamps = np.array([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0])
-    >>> eeg_events_mapping(trigger_array, trigger_points, timestamps)
+    >>> EegEventsMapping(triggerArray, triggerPoints, timestamps)
     [['StartReading', 0.0, 1.0, 0, 2, 2],
      ['EndReading', 2.0, 3.0, 6, 8, 2]]
     """
     
-    events_start_end = []
+    eventsStartEnd = []
 
-    for i in range(trigger_points.shape[0] - 1):
+    for i in range(triggerPoints.shape[0] - 1):
         
-        start = trigger_points[i]
-        end = trigger_points[i + 1]
-        event = trigger_encodings(trigger_array[start])
+        start = triggerPoints[i]
+        end = triggerPoints[i + 1]
+        event = TriggerEncodings(triggerArray[start])
         
         if end - start < 25:
             continue
-        events_start_end.append([event, timestamps[start], timestamps[end], start, end, end - start])
+        eventsStartEnd.append([event, timestamps[start], timestamps[end], start, end, end - start])
         
-    return events_start_end
+    return eventsStartEnd
 
-def calculate_time_gaps(time_array, time_interval):
+def CalculateTimeGaps(timeArray, timeInterval):
     """
     Identifies significant time gaps in an array of timestamps.
 
@@ -279,8 +277,8 @@ def calculate_time_gaps(time_array, time_interval):
     gaps occur.
 
     Parameters:
-    time_array (np.ndarray): An array of timestamps.
-    time_interval (int): The threshold time interval to identify significant gaps.
+    timeArray (np.ndarray): An array of timestamps.
+    timeInterval (int): The threshold time interval to identify significant gaps.
 
     Returns:
     Tuple[np.ndarray, np.ndarray]: 
@@ -288,21 +286,21 @@ def calculate_time_gaps(time_array, time_interval):
         - An array of timestamps corresponding to the identified time gaps.
 
     Example:
-    >>> time_array = np.array([0, 1, 2, 5, 6, 10])
-    >>> time_interval = 2
-    >>> calculate_time_gaps(time_array, time_interval)
+    >>> timeArray = np.array([0, 1, 2, 5, 6, 10])
+    >>> timeInterval = 2
+    >>> CalculateTimeGaps(timeArray, timeInterval)
     (array([3, 4]), array([5, 10]))
     """
     
-    differences = np.diff(time_array).astype('int')
-    indices = np.where(differences > time_interval)[0]
+    differences = np.diff(timeArray).astype('int')
+    indices = np.where(differences > timeInterval)[0]
 
-    time_gaps = differences[indices]
-    corresponding_items = time_array[1:][indices]
+    timeGaps = differences[indices]
+    correspondingItems = timeArray[1:][indices]
     
-    return time_gaps, corresponding_items
+    return timeGaps, correspondingItems
 
-def correct_eeg_triggers(triggers):
+def CorrectEegTriggers(triggers):
     """
     Corrects a list of EEG triggers by mapping them to the nearest valid code
     from a predefined set of correct codes.
@@ -321,64 +319,66 @@ def correct_eeg_triggers(triggers):
 
     Example:
     >>> triggers = [5, 20, 100, 130]
-    >>> correct_eeg_triggers(triggers)
+    >>> CorrectEegTriggers(triggers)
     [8, 16, 96, 128]
     """
 
-    correct_codings = {
+    correctCodings = {
         255: 255, 224: 224, 192: 192, 160: 160,
         128: 128, 96: 96, 64: 64, 32: 32, 16: 16, 8: 8
     }
 
-    valid_codes = sorted(correct_codings.keys())
+    validCodes = sorted(correctCodings.keys())
 
-    max_trigger = max(valid_codes)
-    nearest_code_map = {}
+    maxTrigger = max(validCodes)
+    nearestCodeMap = {}
 
-    for i in range(max_trigger + 1):
-        nearest_code = min(valid_codes, key=lambda x: abs(x - i))
-        nearest_code_map[i] = correct_codings[nearest_code]
+    for i in range(maxTrigger + 1):
+        nearestCode = min(validCodes, key=lambda x: abs(x - i))
+        nearestCodeMap[i] = correctCodings[nearestCode]
 
-    corrected_triggers = []
+    correctedTriggers = []
     for trigger in triggers:
-        if trigger in nearest_code_map:
-            corrected_triggers.append(nearest_code_map[trigger])
+        if trigger in nearestCodeMap:
+            correctedTriggers.append(nearestCodeMap[trigger])
         else:
-            corrected_triggers.append(nearest_code_map[max_trigger])
+            correctedTriggers.append(nearestCodeMap[maxTrigger])
     
-    return corrected_triggers
+    return correctedTriggers
 
-def normalize_eeg_triggers(trigger_values):
+def NormalizeEegTriggers(triggerValues):
     """
     Normalizes EEG trigger values to a range from 0 to 255.
 
     This function normalizes an array of EEG trigger values using the formula:
-    normalized_value = (trigger_value - trigger_min) / (trigger_max - trigger_min) * 255.
+    normalizedValue = (triggerValue - triggerMin) / (triggerMax - triggerMin) * 255.
     The trigger values are first inverted (multiplied by -1) before normalization. The resulting 
     normalized values are rounded to the nearest integer.
 
     Parameters:
-    trigger_values (np.ndarray): Array containing trigger values to be normalized.
+    triggerValues (np.ndarray): Array containing trigger values to be normalized.
 
     Returns:
     np.ndarray: Array of normalized trigger values rounded to the nearest integer.
 
     Example:
-    >>> trigger_values = np.array([10, 20, 30, 40, 50])
-    >>> normalize_eeg_triggers(trigger_values)
+    >>> triggerValues = np.array([10, 20, 30, 40, 50])
+    >>>
+        >>> triggerValues = np.array([10, 20, 30, 40, 50])
+    >>> NormalizeEegTriggers(triggerValues)
     array([255, 204, 153, 102,  51])
     """
     
-    trigger_values = trigger_values * -1
-    trigger_min = np.min(trigger_values)
-    trigger_max = np.max(trigger_values)
+    triggerValues = triggerValues * -1
+    triggerMin = np.min(triggerValues)
+    triggerMax = np.max(triggerValues)
     
-    normalized_triggers = (trigger_values - trigger_min) / (trigger_max - trigger_min) * 255
-    normalized_triggers = np.round(normalized_triggers).astype(int)
+    normalizedTriggers = (triggerValues - triggerMin) / (triggerMax - triggerMin) * 255
+    normalizedTriggers = np.round(normalizedTriggers).astype(int)
     
-    return normalized_triggers
+    return normalizedTriggers
 
-def convert_eeg_unix_timestamps_to_datetime(timestamps, start):
+def ConvertEegUnixTimestampsToDatetime(timestamps, start):
     """
     Convert Unix timestamps to datetime objects using NumPy vectorized operations.
 
@@ -395,18 +395,15 @@ def convert_eeg_unix_timestamps_to_datetime(timestamps, start):
 
     Example:
     >>> timestamps = np.array([1621914057, 1621914058, 1621914059])
-    >>> start_time = np.datetime64('2022-05-25T00:00:00')
-    >>> convert_eeg_unix_timestamps_to_datetime(timestamps, start_time)
+    >>> startTime = np.datetime64('2022-05-25T00:00:00')
+    >>> ConvertEegUnixTimestampsToDatetime(timestamps, startTime)
     array(['2022-05-25T00:00:57.000', '2022-05-25T00:00:58.000',
            '2022-05-25T00:00:59.000'], dtype='datetime64[ms]')
     """
     
-    #timestamps *= 1000
     return timestamps.astype('datetime64[s]')
 
-    #return datetime_objects
-
-def load_edf_file(filepath):
+def LoadEdfFile(filepath):
     """
     Load data from an EDF (European Data Format) file.
 
@@ -424,7 +421,7 @@ def load_edf_file(filepath):
 
     Example:
     >>> filepath = "path/to/your/file.edf"
-    >>> eeg_data = load_edf_file(filepath)
+    >>> eegData = LoadEdfFile(filepath)
     """
     print('*********************************************************************************')
     print('***************************Loading .edf file***************************')

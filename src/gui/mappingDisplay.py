@@ -9,8 +9,8 @@ from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtCore import Qt, QUrl, QTimer, pyqtSignal, QThread
 from PyQt5.QtGui import QIcon
 
-from gui.utils import extract_widgets, button_style
-from gui.utils import convert_mappings_to_list_for_mainDisplay
+from gui.utils import ExtractWidgets, buttonStyle
+from gui.utils import ConvertMappingsToListForMainDisplay
 import config as config
 from scipy.io.wavfile import write
 import os
@@ -28,145 +28,145 @@ class SaveWorker(QThread):
 
     def run(self):
         try:
-            meta_data = {
-                'audio_file_name': str(self.app.audio_file_name_to_save_path),
-                'eeg_file_name': str(self.app.eeg_file_name_to_save_path),
-                'Action': self.app.marker,
+            metaData = {
+                'audioFileName': str(self.app.audioFileNameToSavePath),
+                'eegFileName': str(self.app.eegFileNameToSavePath),
+                'action': self.app.marker,
                 'word': self.app.word,
-                'eeg_start_index': self.app.eeg_start_index,
-                'eeg_end_index': self.app.eeg_end_index,
-                'audio_start_index': self.app.audio_start_index,
-                'audio_end_index': self.app.audio_end_index,
-                'channel_names':self.app.channel_names
+                'eegStartIndex': self.app.eegStartIndex,
+                'eegEndIndex': self.app.eegEndIndex,
+                'audioStartIndex': self.app.audioStartIndex,
+                'audioEndIndex': self.app.audioEndIndex,
+                'channelNames':self.app.channelNames
             }
-            with open(str(self.app.meta_data_file_name_to_save_path), 'w') as json_file:
-                json.dump(meta_data, json_file)
-            np.save(self.app.audio_file_name_to_save_path, self.app.audio_sample)
+            with open(str(self.app.metaDataFileNameToSavePath), 'w') as jsonFile:
+                json.dump(metaData, jsonFile)
+            np.save(self.app.audioFileNameToSavePath, self.app.audioSample)
             self.finished.emit()
         except Exception as e:
             self.error.emit(str(e))
 
 
 class EEGAudioApp(QMainWindow):
-    about_to_close = pyqtSignal()
+    aboutToClose = pyqtSignal()
 
-    def __init__(self, eeg_daudio_data):
+    def __init__(self, eegDaudioData):
         super().__init__()
-        self.setup_directories()
-        self.EEG_AUDIO_DATA = eeg_daudio_data
-        self.MAPPINGS = self.EEG_AUDIO_DATA.MappingEEGEventsWithMarkers
-        self.mapping_list_items = convert_mappings_to_list_for_mainDisplay(self.MAPPINGS)
+        self.setupDirectories()
+        self.eegAudioData = eegDaudioData
+        self.mappings = self.eegAudioData.mappingEegEventsWithMarkers
+        self.mappingListItems = ConvertMappingsToListForMainDisplay(self.mappings)
 
         self.timer = QTimer()
-        self.timer.timeout.connect(self.update_audio_plot)
-        self.audio_index = 0
+        self.timer.timeout.connect(self.updateAudioPlot)
+        self.audioIndex = 0
 
         self.initUI()
 
-    def setup_directories(self):
-        os.makedirs(config.OUTPUT_DIR_AUDIO, exist_ok=True)
-        os.makedirs(config.OUTPUT_DIR_EEG, exist_ok=True)
-        os.makedirs(config.OUTPUT_DIR_METADATA, exist_ok=True)
+    def setupDirectories(self):
+        os.makedirs(config.OutputDirAudio, exist_ok=True)
+        os.makedirs(config.OutputDirEEG, exist_ok=True)
+        os.makedirs(config.OutputDirMetadata, exist_ok=True)
 
     def initUI(self):
-        self.main_widget = QWidget()
-        self.setCentralWidget(self.main_widget)
-        self.setWindowIcon(QIcon(config.WINDOW_ICON_PATH))
+        self.mainWidget = QWidget()
+        self.setCentralWidget(self.mainWidget)
+        self.setWindowIcon(QIcon(config.WindowIconPath))
 
-        main_layout = QVBoxLayout()
-        top_layout, bottom_layout = self.create_main_layouts()
+        mainLayout = QVBoxLayout()
+        topLayout, bottomLayout = self.createMainLayouts()
 
-        main_layout.addLayout(top_layout)
-        main_layout.addLayout(bottom_layout)
+        mainLayout.addLayout(topLayout)
+        mainLayout.addLayout(bottomLayout)
 
-        self.main_widget.setLayout(main_layout)
+        self.mainWidget.setLayout(mainLayout)
 
         self.setWindowTitle('EEG and Audio Viewer')
         self.setGeometry(100, 100, 1200, 600)
 
         self.mediaPlayer = QMediaPlayer()
 
-    def create_main_layouts(self):
-        top_layout = self.create_top_layout()
-        bottom_layout = self.create_bottom_layout()
-        return top_layout, bottom_layout
+    def createMainLayouts(self):
+        topLayout = self.createTopLayout()
+        bottomLayout = self.createBottomLayout()
+        return topLayout, bottomLayout
 
-    def create_top_layout(self):
-        top_layout = QHBoxLayout()
+    def createTopLayout(self):
+        topLayout = QHBoxLayout()
 
-        self.list_group_box = self.create_list_group_box()
-        self.eeg_plot_widget = self.create_eeg_plot_widget()
-        self.audio_plot_widget = self.create_audio_plot_widget()
+        self.listGroupBox = self.createListGroupBox()
+        self.eegPlotWidget = self.createEegPlotWidget()
+        self.audioPlotWidget = self.createAudioPlotWidget()
 
-        top_layout.addWidget(self.list_group_box)
-        top_layout.addWidget(self.eeg_plot_widget)
-        top_layout.addWidget(self.audio_plot_widget)
+        topLayout.addWidget(self.listGroupBox)
+        topLayout.addWidget(self.eegPlotWidget)
+        topLayout.addWidget(self.audioPlotWidget)
         
-        return top_layout
+        return topLayout
 
-    def create_list_group_box(self):
-        list_group_box = QGroupBox("Mappings")
-        list_layout = QVBoxLayout()
+    def createListGroupBox(self):
+        listGroupBox = QGroupBox("Mappings")
+        listLayout = QVBoxLayout()
         
         self.listWidget = QListWidget()
-        self.listWidget.addItems(self.mapping_list_items)
-        self.listWidget.currentItemChanged.connect(self.update_info_from_list_item)
+        self.listWidget.addItems(self.mappingListItems)
+        self.listWidget.currentItemChanged.connect(self.updateInfoFromListItem)
         
-        list_layout.addWidget(self.listWidget)
-        list_group_box.setLayout(list_layout)
+        listLayout.addWidget(self.listWidget)
+        listGroupBox.setLayout(listLayout)
 
-        return list_group_box
+        return listGroupBox
 
-    def create_eeg_plot_widget(self):
-        plot_widget = pg.PlotWidget(title="EEG Activity")
-        plot_widget.setBackground('w')
-        plot_widget.getPlotItem().showGrid(True, True)
-        self.plotDataItem = plot_widget.plot(pen='b')
-        self.update_eeg_plot()
+    def createEegPlotWidget(self):
+        plotWidget = pg.PlotWidget(title="EEG Activity")
+        plotWidget.setBackground('w')
+        plotWidget.getPlotItem().showGrid(True, True)
+        self.plotDataItem = plotWidget.plot(pen='b')
+        self.updateEegPlot()
         
-        return plot_widget
+        return plotWidget
 
-    def create_audio_plot_widget(self):
-        audio_plot_widget = pg.PlotWidget(title="Audio Visualizer")
-        audio_plot_widget.setBackground('g')
-        audio_plot_widget.getPlotItem().showGrid(True, True)
-        self.audioPlotDataItem = audio_plot_widget.plot(pen='red')
+    def createAudioPlotWidget(self):
+        audioPlotWidget = pg.PlotWidget(title="Audio Visualizer")
+        audioPlotWidget.setBackground('g')
+        audioPlotWidget.getPlotItem().showGrid(True, True)
+        self.audioPlotDataItem = audioPlotWidget.plot(pen='red')
         
-        return audio_plot_widget
+        return audioPlotWidget
 
-    def create_bottom_layout(self):
-        bottom_layout = QVBoxLayout()
+    def createBottomLayout(self):
+        bottomLayout = QVBoxLayout()
         
-        audio_control_layout = self.create_audio_control_layout()
-        info_layout = self.create_info_layout()
-        navigation_layout = self.create_navigation_layout()
+        audioControlLayout = self.createAudioControlLayout()
+        infoLayout = self.createInfoLayout()
+        navigationLayout = self.createNavigationLayout()
         
-        bottom_layout.addLayout(audio_control_layout)
-        bottom_layout.addLayout(info_layout)
-        bottom_layout.addStretch()
-        bottom_layout.addLayout(navigation_layout)
+        bottomLayout.addLayout(audioControlLayout)
+        bottomLayout.addLayout(infoLayout)
+        bottomLayout.addStretch()
+        bottomLayout.addLayout(navigationLayout)
         
-        return bottom_layout
+        return bottomLayout
 
-    def create_audio_control_layout(self):
-        audio_control_layout = QHBoxLayout()
+    def createAudioControlLayout(self):
+        audioControlLayout = QHBoxLayout()
         
-        self.play_button = QPushButton("Play")
-        self.play_button.setStyleSheet(button_style)
-        self.stop_button = QPushButton("Stop")
-        self.stop_button.setStyleSheet(button_style)
+        self.playButton = QPushButton("Play")
+        self.playButton.setStyleSheet(buttonStyle)
+        self.stopButton = QPushButton("Stop")
+        self.stopButton.setStyleSheet(buttonStyle)
         
-        self.play_button.clicked.connect(self.play_audio)
-        self.stop_button.clicked.connect(self.stop_audio)
+        self.playButton.clicked.connect(self.playAudio)
+        self.stopButton.clicked.connect(self.stopAudio)
         
-        audio_control_layout.addWidget(self.play_button)
-        audio_control_layout.addWidget(self.stop_button)
+        audioControlLayout.addWidget(self.playButton)
+        audioControlLayout.addWidget(self.stopButton)
         
-        return audio_control_layout
+        return audioControlLayout
 
-    def create_info_layout(self):
-        self.labels = ["Action:", "Word:", "Start Time(EEG):", "End Time(EEG):", "Start Index(EEG):", "End Index(EEG):", "Start Index(Audio):", "Duration:", "Start Time(Audio):"]
-        self.info_layout = QVBoxLayout()
+    def createInfoLayout(self):
+        self.labels = ["Action:", "Word:", "StartTime(EEG):", "EndTime(EEG):", "StartIndex(EEG):", "EndIndex(EEG):", "StartIndex(Audio):", "Duration:", "StartTime(Audio):"]
+        self.infoLayout = QVBoxLayout()
         count = 0
         
         for i in range(3):
@@ -176,158 +176,149 @@ class EEGAudioApp(QMainWindow):
             for j in range(3):
                 label = QLabel(self.labels[count])
                 count += 1
-                text_box = QLineEdit()
+                textBox = QLineEdit()
                 hbox1.addWidget(label)
-                hbox2.addWidget(text_box)
+                hbox2.addWidget(textBox)
                 
-            self.info_layout.addLayout(hbox1)
-            self.info_layout.addLayout(hbox2)
+            self.infoLayout.addLayout(hbox1)
+            self.infoLayout.addLayout(hbox2)
         
-        return self.info_layout
+        return self.infoLayout
 
-    def create_navigation_layout(self):
-        button_layout = QHBoxLayout()
+    def createNavigationLayout(self):
+        buttonLayout = QHBoxLayout()
         
-        self.prev_button = QPushButton("Previous")
-        self.prev_button.setStyleSheet(button_style)
-        self.next_button = QPushButton("Next")
-        self.next_button.setStyleSheet(button_style)
-        self.discard_button = QPushButton("Discard")
-        self.discard_button.setStyleSheet(button_style)
-        self.save_button = QPushButton("Save")
-        self.save_button.setStyleSheet(button_style)
+        self.prevButton = QPushButton("Previous")
+        self.prevButton.setStyleSheet(buttonStyle)
+        self.nextButton = QPushButton("Next")
+        self.nextButton.setStyleSheet(buttonStyle)
+        self.discardButton = QPushButton("Discard")
+        self.discardButton.setStyleSheet(buttonStyle)
+        self.saveButton = QPushButton("Save")
+        self.saveButton.setStyleSheet(buttonStyle)
         
-        self.prev_button.clicked.connect(self.prev_action)
-        self.next_button.clicked.connect(self.next_action)
-        self.discard_button.clicked.connect(self.discard_action)
-        self.save_button.clicked.connect(self.save_action)
+        self.prevButton.clicked.connect(self.prevAction)
+        self.nextButton.clicked.connect(self.nextAction)
+        self.discardButton.clicked.connect(self.discardAction)
+        self.saveButton.clicked.connect(self.saveAction)
         
-        button_layout.addWidget(self.prev_button)
-        button_layout.addWidget(self.next_button)
-        button_layout.addWidget(self.discard_button)
-        button_layout.addWidget(self.save_button)
+        buttonLayout.addWidget(self.prevButton)
+        buttonLayout.addWidget(self.nextButton)
+        buttonLayout.addWidget(self.discardButton)
+        buttonLayout.addWidget(self.saveButton)
         
-        return button_layout
+        return buttonLayout
 
     def closeEvent(self, event):
-        self.about_to_close.emit()
+        self.aboutToClose.emit()
         event.accept()
 
-    def update_eeg_plot(self):
-        eeg_data = np.random.normal(size=1000)
-        self.plotDataItem.setData(eeg_data)
+    def updateEegPlot(self):
+        eegData = np.random.normal(size=1000)
+        self.plotDataItem.setData(eegData)
 
-    def update_audio_plot(self):
-        if self.audio_data is not None:
-            chunk_size = 1024
-            end_index = self.audio_index + chunk_size
-            if end_index >= len(self.audio_data):
-                end_index = len(self.audio_data)
+    def updateAudioPlot(self):
+        if self.audioData is not None:
+            chunkSize = 1024
+            endIndex = self.audioIndex + chunkSize
+            if endIndex >= len(self.audioData):
+                endIndex = len(self.audioData)
                 self.timer.stop()
-            data_chunk = self.audio_data[self.audio_index:end_index]
-            self.audioPlotDataItem.setData(data_chunk)
-            self.audio_index = end_index
+            dataChunk = self.audioData[self.audioIndex:endIndex]
+            self.audioPlotDataItem.setData(dataChunk)
+            self.audioIndex = endIndex
 
-    def play_audio(self):
-        self.audio_sample_rate = self.EEG_AUDIO_DATA.audio.SAMPLING_FREQUENCY
-        if not os.path.exists(self.audio_file_name_to_save_path_wav):
-            write(self.audio_file_name_to_save_path_wav, int(self.audio_sample_rate), self.audio_sample)
-        self.audio_data, self.sample_rate = sf.read(self.audio_file_name_to_save_path_wav, dtype='int16')
-        self.audio_index = 0
-        media_content = QMediaContent(QUrl.fromLocalFile(str(self.audio_file_name_to_save_path_wav)))
-        self.mediaPlayer.setMedia(media_content)
+    def playAudio(self):
+        self.audioSampleRate = self.eegAudioData.audioData.samplingFrequency
+        if not os.path.exists(self.audioFileNameToSavePathWav):
+            write(self.audioFileNameToSavePathWav, int(self.audioSampleRate), self.audioSample)
+        self.audioData, self.sampleRate = sf.read(self.audioFileNameToSavePathWav, dtype='int16')
+        self.audioIndex = 0
+        mediaContent = QMediaContent(QUrl.fromLocalFile(str(self.audioFileNameToSavePathWav)))
+        self.mediaPlayer.setMedia(mediaContent)
         self.mediaPlayer.play()
         self.timer.start(30)
 
-    def stop_audio(self):
+    def stopAudio(self):
         self.mediaPlayer.stop()
         self.timer.stop()
 
-    def prev_action(self):
-        current_row = self.listWidget.currentRow()
-        if current_row > 0:
-            self.listWidget.setCurrentRow(current_row - 1)
-            self.update_info_from_list_item()
+    def prevAction(self):
+        currentRow = self.listWidget.currentRow()
+        if currentRow > 0:
+            self.listWidget.setCurrentRow(currentRow - 1)
+            self.updateInfoFromListItem()
 
-    def next_action(self):
-        current_row = self.listWidget.currentRow()
-        if current_row < self.listWidget.count() - 1:
-            self.listWidget.setCurrentRow(current_row + 1)
-            self.update_info_from_list_item()
+    def nextAction(self):
+        currentRow = self.listWidget.currentRow()
+        if currentRow < self.listWidget.count() - 1:
+            self.listWidget.setCurrentRow(currentRow + 1)
+            self.updateInfoFromListItem()
 
-    def discard_action(self):
-        current_row = self.listWidget.currentRow()
-        if current_row < self.listWidget.count() - 1:
-            self.listWidget.setCurrentRow(current_row + 1)
-            self.update_info_from_list_item()
+    def discardAction(self):
+        currentRow = self.listWidget.currentRow()
+        if currentRow < self.listWidget.count() - 1:
+            self.listWidget.setCurrentRow(currentRow + 1)
+            self.updateInfoFromListItem()
 
-    def save_action(self):
-        '''
-        meta_data = {'audio_file_name': str(self.audio_file_name_to_save_path), 'eeg_file_name':str(self.eeg_file_name_to_save_path),
-                     'Action':self.marker, 'word': self.word, 'eeg_start_index':self.eeg_start_index,
-                        'eeg_end_index': self.eeg_end_index, 'audio_start_index': self.audio_start_index,
-                        'audio_end_index':self.audio_end_index 
-                    }
-        with open(str(self.meta_data_file_name_to_save_path), 'w') as json_file:
-            json.dump(meta_data, json_file)
-        self.audio_sample.save(self.audio_file_name_to_save_path)
-        #self.
-        '''
-        self.save_message_box = self.show_waiting_message('Saving files')
-        self.save_message_box.setWindowTitle("Saving")
-        self.save_worker = SaveWorker(self)
-        self.save_worker.finished.connect(self.on_save_finished)
-        self.save_worker.error.connect(self.on_save_error)
-        self.save_worker.start()
+    def saveAction(self):
+        
+        self.saveMessageBox = self.showWaitingMessage('Saving files')
+        self.saveMessageBox.setWindowTitle("Saving")
+        self.saveWorker = SaveWorker(self)
+        self.saveWorker.finished.connect(self.onSaveFinished)
+        self.saveWorker.error.connect(self.onSaveError)
+        self.saveWorker.start()
 
-    def on_save_error(self, error_message):
-        self.waiting_msg_box.accept()
-        QMessageBox.critical(self, "Error", f"Failed to load EEG data: {error_message}")
+    def onSaveError(self, errorMessage):
+        self.waitingMsgBox.accept()
+        QMessageBox.critical(self, "Error", f"Failed to load EEG data: {errorMessage}")
 
-    def show_waiting_message(self, message):
-        waiting_msg_box = QMessageBox()
-        waiting_msg_box.setText(message)
-        waiting_msg_box.setStandardButtons(QMessageBox.NoButton)
-        waiting_msg_box.setWindowFlags(Qt.Window | Qt.CustomizeWindowHint | Qt.WindowTitleHint)
-        waiting_msg_box.setWindowTitle('Processing')
-        waiting_msg_box.show()
+    def showWaitingMessage(self, message):
+        waitingMsgBox = QMessageBox()
+        waitingMsgBox.setText(message)
+        waitingMsgBox.setStandardButtons(QMessageBox.NoButton)
+        waitingMsgBox.setWindowFlags(Qt.Window | Qt.CustomizeWindowHint | Qt.WindowTitleHint)
+        waitingMsgBox.setWindowTitle('Processing')
+        waitingMsgBox.show()
         QApplication.processEvents()
-        return waiting_msg_box
+        return waitingMsgBox
     
-    def on_save_finished(self):
-        self.save_message_box.accept()
+    def onSaveFinished(self):
+        self.saveMessageBox.accept()
 
-    def update_info_from_list_item(self):
-        selected_item_text = self.listWidget.currentItem().text()
-        info_parts = selected_item_text.split(",")
+    def updateInfoFromListItem(self):
+        selectedItemText = self.listWidget.currentItem().text()
+        infoParts = selectedItemText.split(",")
 
-        self.marker = info_parts[0]
-        self.word = info_parts[1]
-        self.eeg_start_index = int(info_parts[4])
-        self.eeg_end_index = int(info_parts[5])
-        self.duration = int(info_parts[7])
-        self.audio_start_index = int(info_parts[6])
-        self.audio_end_index = self.audio_start_index + int(
-            (self.duration / int(self.EEG_AUDIO_DATA.eeg.SAMPLING_FREQUENCY)) * self.EEG_AUDIO_DATA.audio.SAMPLING_FREQUENCY)
+        self.marker = infoParts[0]
+        self.word = infoParts[1]
+        self.eegStartIndex = int(infoParts[4])
+        self.eegEndIndex = int(infoParts[5])
+        self.duration = int(infoParts[7])
+        self.audioStartIndex = int(infoParts[6])
+        self.audioEndIndex = self.audioStartIndex + int(
+            (self.duration / int(self.eegAudioData.eegData.samplingFrequency)) * self.eegAudioData.audioData.samplingFrequency)
 
-        self.audio_sample = self.EEG_AUDIO_DATA.audio.AUDIO[self.audio_start_index:self.audio_end_index]
-        self.audio_sample = self.audio_sample.reshape(-1)
-        self.eeg_sample = self.EEG_AUDIO_DATA.eeg.RAW_DATA[:self.eeg_start_index:self.eeg_end_index]
+        self.audioSample = self.eegAudioData.audioData.audio[self.audioStartIndex:self.audioEndIndex]
+        self.audioSample = self.audioSample.reshape(-1)
+        self.eegSample = self.eegAudioData.eegData.rawData[:self.eegStartIndex:self.eegEndIndex]
 
-        self.channel_names = self.EEG_AUDIO_DATA.eeg.CHANNEL_NAMES
-        self.eeg_file_name_to_save_path = Path(config.OUTPUT_DIR_EEG, f'{self.marker}_{self.word}_{self.eeg_start_index}.npy')
-        self.audio_file_name_to_save_path = Path(config.OUTPUT_DIR_AUDIO, f'{self.marker}_{self.word}_{self.eeg_start_index}.npy')
-        self.audio_file_name_to_save_path_wav = Path(config.OUTPUT_DIR_AUDIO, f'{self.marker}_{self.word}_{self.eeg_start_index}.wav')
-        self.meta_data_file_name_to_save_path = Path(config.OUTPUT_DIR_METADATA, f'{self.marker}_{self.word}.json')
+        self.channelNames = self.eegAudioData.eegData.channelNames
+        self.eegFileNameToSavePath = Path(config.OutputDirEEG, f'{self.marker}_{self.word}_{self.eegStartIndex}.npy')
+        self.audioFileNameToSavePath = Path(config.OutputDirAudio, f'{self.marker}_{self.word}_{self.eegStartIndex}.npy')
+        self.audioFileNameToSavePathWav = Path(config.OutputDirAudio, f'{self.marker}_{self.word}_{self.eegStartIndex}.wav')
+        self.metaDataFileNameToSavePath = Path(config.OutputDirMetadata, f'{self.marker}_{self.word}.json')
         
-        info_parts[2] = str(np.array(float(info_parts[2])).astype('datetime64[s]'))
-        info_parts[3] = str(np.array(float(info_parts[3])).astype('datetime64[s]'))
-        info_parts[8] = str(np.array(float(info_parts[8])).astype('datetime64[s]'))
+        infoParts[2] = str(np.array(float(infoParts[2])).astype('datetime64[s]'))
+        infoParts[3] = str(np.array(float(infoParts[3])).astype('datetime64[s]'))
+        infoParts[8] = str(np.array(float(infoParts[8])).astype('datetime64[s]'))
         
         
-        widgets = extract_widgets(self.info_layout)
+        widgets = ExtractWidgets(self.infoLayout)
         count = 0
         for widget in widgets:
             if isinstance(widget, QLineEdit):
-                widget.setText(info_parts[count])
+                widget.setText(infoParts[count])
                 count += 1
+

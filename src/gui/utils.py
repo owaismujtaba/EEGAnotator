@@ -1,9 +1,8 @@
-from PyQt5.QtWidgets import  QHBoxLayout, QWidget, QLabel, QLineEdit
+from PyQt5.QtWidgets import QHBoxLayout, QWidget, QLabel, QLineEdit
 
+# Background-color: rgba(255, 255, 255, 0)
 
-#background-color: rgba(255, 255, 255, 0)
-
-text_box_style = """
+textBoxStyle = """
                         color: "#444";
                         border: 2px solid #999;
                         border-radius: 5px;
@@ -12,7 +11,7 @@ text_box_style = """
                         font-weight: bold;
                         font-size: 14px;
                     """        
-label_style = """
+labelStyle = """
                     font-weight: bold; 
                     border: 0px solid black; 
                     border-radius: 5px;
@@ -20,7 +19,7 @@ label_style = """
                     font-weight: bold;
                     color: #555555
                 """
-button_style = """
+buttonStyle = """
             QPushButton { 
                 background-color: #B0C4DE;
                 color: black;
@@ -35,7 +34,7 @@ button_style = """
                 background-color: #5F9EA0; 
                 border-style: inset; }"
         """
-combobox_style = """
+comboBoxStyle = """
                     color: #444; 
                     font-weight: bold; 
                     background-color: #ff9999; 
@@ -43,40 +42,53 @@ combobox_style = """
                     border-radius: 5px
                 """
 
-def convert_mappings_to_list_for_mainDisplay(mappings):
-    list_of_strings = []
+layoutStyle = """
+        border: 2px solid #ccc;
+        border-radius: 5px;
+        background: transparent        
+    """
+def ConvertMarkerEventsToList(markerEvents):
+    listOfStrings = []
+    for item in markerEvents:
+        print(item)
+        item = '   :::   '.join(str(x) for x in item)
+        listOfStrings.append(item)
+     
+    return listOfStrings
+
+def ConvertMappingsToListForMainDisplay(mappings):
+    listOfStrings = []
     for item in mappings:
         print(item)
         item = ','.join(str(x) for x in item)
-        list_of_strings.append(item)
+        listOfStrings.append(item)
      
-    return list_of_strings
+    return listOfStrings
 
-def get_file_name_from_path(file_path):
-    filename = file_path.split('/')[-1]
+def GetFileNameFromPath(filePath):
+    filename = filePath.split('/')[-1]
     return filename
       
-def convert_eeg_events_to_list(events):
-    output_list = []
+def ConvertEegEventsToList(events):
+    outputList = []
     for row in events:
         action = row[0]
-        start_time = row[1]
-        end_time = row[2]
-        start_index = row[3]
-        end_index = row[4]
+        startTime = row[1]
+        endTime = row[2]
+        startIndex = row[3]
+        endIndex = row[4]
         duration = row[5]
-        output_list.append(f"{action} ::: {start_time}  :::     {end_time} ::: {start_index} ::: {end_index} ::: {duration}")
-    return output_list
+        outputList.append(f"{action} ::: {startTime}  :::     {endTime} ::: {startIndex} ::: {endIndex} ::: {duration}")
+    return outputList
 
-
-def extract_widgets(layout):
+def ExtractWidgets(layout):
     widgets = []
     for i in range(layout.count()):
         item = layout.itemAt(i)
         if isinstance(item, QHBoxLayout):
-            widgets.extend(extract_widgets(item))
+            widgets.extend(ExtractWidgets(item))
         elif isinstance(item, QWidget):
-            widgets.extend(extract_widgets(item.layout()))
+            widgets.extend(ExtractWidgets(item.layout()))
         elif isinstance(item.widget(), QLabel) or isinstance(item.widget(), QLineEdit):
             widgets.append(item.widget())
     return widgets
