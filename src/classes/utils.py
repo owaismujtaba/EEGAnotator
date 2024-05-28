@@ -2,7 +2,70 @@ import numpy as np
 import pyxdf
 import mne
 
+
+
+def findingEegStartIndexEndIndexAndAudioIndexForMappings(mappings):
+    word_actions = {}
+
+    # Process the list of events
+    for event in mappings:
+        action, word = event[0], event[1]
+        if word not in word_actions:
+            word_actions[word] = []
+        
+        word_actions[word].append({
+            'action': action,
+            'eegstarttime': event[2],
+            'eegendtime': event[3],
+            'eegstartindex': event[4],
+            'eegendindex': event[5],
+            'audiostartindex': event[6],
+            'duration': event[7],
+            'audiostarttime': event[8]
+        })
+
+    # Organize actions into occurrences
+    occurrences = {}
+
+    for word, actions in word_actions.items():
+        occurrences[word] = []
+        current_occurrence = {}
+        for action in actions:
+            if action['action'] == 'StartReading':
+                if current_occurrence:
+                    occurrences[word].append(current_occurrence)
+                    current_occurrence = {}
+                current_occurrence['StartReading'] = action
+            elif action['action'] == 'StartSaying':
+                current_occurrence['StartSaying'] = action
+            elif action['action'] == 'EndSaying':
+                current_occurrence['EndSaying'] = action
+                occurrences[word].append(current_occurrence)
+                current_occurrence = {}
+            else:
+                # Handle other actions if necessary
+                pass
+        if current_occurrence:
+            occurrences[word].append(current_occurrence)
+    
+    wordsWithEegAndAudiDetsils = []
+    for item in occurrences.items():
+        word = item[0]
+        wordDetails = item[1]
+        for item in wordDetails:
+            try:
+                
+                wordsWithEegAndAudiDetsils.append([word, item['StartReading']['eegstartindex'], item['StartSaying']['eegstartindex'], 
+                                        item['EndSaying']['eegendindex'], item['StartSaying']['audiostartindex'], 
+                                        item['EndSaying']['audiostartindex'] ]
+                                        )
+            except:
+                pass
+        
+    return wordsWithEegAndAudiDetsils
+
 #**************************************AUDIO RELATED FUNCTIONS**************************************
+'''
 def bundleAudioMarkersWithTimestamps(markers, markerTimestamps, audioTimestamps):
     """
     Bundles audio markers with corresponding timestamps.
@@ -37,6 +100,45 @@ def bundleAudioMarkersWithTimestamps(markers, markerTimestamps, audioTimestamps)
         markerWordTimestamp.append([markerAction, markerWord, timestamp, audioStartIndex])
 
     return markerWordTimestamp
+'''
+
+import numpy as np
+
+def bundleAudioMarkersWithTimestamps(markers, markerTimestamps, audioTimestamps):
+    """
+    Bundles audio markers with corresponding timestamps.
+
+    Parameters:
+        - markers (list): List of marker data.
+        - markerTimestamps (list): List of timestamps corresponding to the markers.
+        - audioTimestamps (np.ndarray): Array of timestamps corresponding to the audio data.
+
+    Returns:
+        - markerWordTimestamp (list): List of lists containing marker action, marker word, timestamp, and audio start index.
+    """
+    print('***************************Started bundling markers and audio timestamps***************************')
+
+    markerWordTimestamp = []
+
+    # Find the closest audio timestamp that is less than or equal to each marker timestamp
+    audioIndices = np.searchsorted(audioTimestamps, markerTimestamps, side='right') - 1
+    audioIndices = np.clip(audioIndices, 0, len(audioTimestamps) - 1)  # Ensure indices are within valid range
+
+    for index in range(len(markers)):
+        markerValues = markers[index][0].split(':')
+
+        markerAction = markerValues[0]
+        markerWord = markerValues[1] if len(markerValues) > 1 else '.'
+        timestamp = markerTimestamps[index]
+        audioStartIndex = audioIndices[index]
+
+        markerWordTimestamp.append([markerAction, markerWord, timestamp, audioStartIndex])
+
+    return markerWordTimestamp
+
+
+
+
 
 def convertAudioUnixTimestampsToDatetime(timestamps, start=None):
     """
