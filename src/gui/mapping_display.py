@@ -42,6 +42,13 @@ class SaveWorker(QThread):
             with open(str(self.app.metaDataFileNameToSavePath), 'w') as jsonFile:
                 json.dump(metaData, jsonFile)
             np.save(self.app.audioFileNameToSavePath, self.app.audioSample)
+
+            sliced_raw = self.app.eegAudioData.eegData.rawData.copy().crop(
+                tmin=metaData['eegStartIndex'] /self.app.eegAudioData.eegData.samplingFrequency, 
+                tmax=metaData['eegEndIndex'] / self.app.eegAudioData.eegData.samplingFrequency
+            )
+
+            sliced_raw.save(metaData['eegFileName'], overwrite=True)
             self.finished.emit()
         except Exception as e:
             self.error.emit(str(e))
@@ -271,7 +278,7 @@ class EEGAudioApp(QMainWindow):
         self.saveWorker.start()
 
     def onSaveError(self, errorMessage):
-        self.waitingMsgBox.accept()
+        self.saveMessageBox.accept()
         QMessageBox.critical(self, "Error", f"Failed to load EEG data: {errorMessage}")
 
     def showWaitingMessage(self, message):
@@ -305,7 +312,7 @@ class EEGAudioApp(QMainWindow):
         self.eegSample = self.eegAudioData.eegData.rawData[:self.eegStartIndex:self.eegEndIndex]
 
         self.channelNames = self.eegAudioData.eegData.channelNames
-        self.eegFileNameToSavePath = Path(config.outputDirEEG, f'{self.marker}_{self.word}_{self.eegStartIndex}.npy')
+        self.eegFileNameToSavePath = Path(config.outputDirEEG, f'{self.marker}_{self.word}_{self.eegStartIndex}.fif')
         self.audioFileNameToSavePath = Path(config.outputDirAudio, f'{self.marker}_{self.word}_{self.eegStartIndex}.npy')
         self.audioFileNameToSavePathWav = Path(config.outputDirAudio, f'{self.marker}_{self.word}_{self.eegStartIndex}.wav')
         self.metaDataFileNameToSavePath = Path(config.outputDirMetadata, f'{self.marker}_{self.word}.json')
