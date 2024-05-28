@@ -21,5 +21,10 @@ setup(
     author = 'Owais Mujtaba Khanday',
     author_email = 'owais.mujtaba123@gmail.com',
     packages = find_packages(),
-    install_requires = get_requirements('requirements.txt')
+    install_requires = get_requirements('requirements.txt'),
+    entry_points={
+        "console_scripts": [
+            "eeganotate=main:main",
+        ]
+    }
 )
