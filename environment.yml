@@ -33,7 +33,6 @@ dependencies:
   - pyqtgraph=0.13.7
   - python-dotenv=1.0.1
   - pytz=2024.1
-  - pywin32=306
   - pyxdf=1.16.6
   - qt=5.15.2
   - requests=2.32.2
