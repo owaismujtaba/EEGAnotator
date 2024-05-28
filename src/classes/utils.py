@@ -2,6 +2,68 @@ import numpy as np
 import pyxdf
 import mne
 
+
+
+def findingEegStartIndexEndIndexAndAudioIndexForMappings(mappings):
+    word_actions = {}
+
+    # Process the list of events
+    for event in mappings:
+        action, word = event[0], event[1]
+        if word not in word_actions:
+            word_actions[word] = []
+        
+        word_actions[word].append({
+            'action': action,
+            'eegstarttime': event[2],
+            'eegendtime': event[3],
+            'eegstartindex': event[4],
+            'eegendindex': event[5],
+            'audiostartindex': event[6],
+            'duration': event[7],
+            'audiostarttime': event[8]
+        })
+
+    # Organize actions into occurrences
+    occurrences = {}
+
+    for word, actions in word_actions.items():
+        occurrences[word] = []
+        current_occurrence = {}
+        for action in actions:
+            if action['action'] == 'StartReading':
+                if current_occurrence:
+                    occurrences[word].append(current_occurrence)
+                    current_occurrence = {}
+                current_occurrence['StartReading'] = action
+            elif action['action'] == 'StartSaying':
+                current_occurrence['StartSaying'] = action
+            elif action['action'] == 'EndSaying':
+                current_occurrence['EndSaying'] = action
+                occurrences[word].append(current_occurrence)
+                current_occurrence = {}
+            else:
+                # Handle other actions if necessary
+                pass
+        if current_occurrence:
+            occurrences[word].append(current_occurrence)
+    
+    wordsWithEegAndAudiDetsils = []
+    for item in occurrences.items():
+        word = item[0]
+        wordDetails = item[1]
+        for item in wordDetails:
+            try:
+                
+                wordsWithEegAndAudiDetsils.append([word, item['StartReading']['eegstartindex'], item['StartSaying']['eegstartindex'], 
+                                        item['EndSaying']['eegendindex'], item['StartSaying']['audiostartindex'], 
+                                        item['EndSaying']['audiostartindex'] ]
+                                        )
+            except:
+                pass
+        
+    return wordsWithEegAndAudiDetsils
+
 #**************************************AUDIO RELATED FUNCTIONS**************************************
 '''
 def bundleAudioMarkersWithTimestamps(markers, markerTimestamps, audioTimestamps):
