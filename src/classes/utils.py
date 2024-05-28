@@ -3,6 +3,7 @@ import pyxdf
 import mne
 
 #**************************************AUDIO RELATED FUNCTIONS**************************************
+'''
 def bundleAudioMarkersWithTimestamps(markers, markerTimestamps, audioTimestamps):
     """
     Bundles audio markers with corresponding timestamps.
@@ -37,6 +38,45 @@ def bundleAudioMarkersWithTimestamps(markers, markerTimestamps, audioTimestamps)
         markerWordTimestamp.append([markerAction, markerWord, timestamp, audioStartIndex])
 
     return markerWordTimestamp
+'''
+
+import numpy as np
+
+def bundleAudioMarkersWithTimestamps(markers, markerTimestamps, audioTimestamps):
+    """
+    Bundles audio markers with corresponding timestamps.
+
+    Parameters:
+        - markers (list): List of marker data.
+        - markerTimestamps (list): List of timestamps corresponding to the markers.
+        - audioTimestamps (np.ndarray): Array of timestamps corresponding to the audio data.
+
+    Returns:
+        - markerWordTimestamp (list): List of lists containing marker action, marker word, timestamp, and audio start index.
+    """
+    print('***************************Started bundling markers and audio timestamps***************************')
+
+    markerWordTimestamp = []
+
+    # Find the closest audio timestamp that is less than or equal to each marker timestamp
+    audioIndices = np.searchsorted(audioTimestamps, markerTimestamps, side='right') - 1
+    audioIndices = np.clip(audioIndices, 0, len(audioTimestamps) - 1)  # Ensure indices are within valid range
+
+    for index in range(len(markers)):
+        markerValues = markers[index][0].split(':')
+
+        markerAction = markerValues[0]
+        markerWord = markerValues[1] if len(markerValues) > 1 else '.'
+        timestamp = markerTimestamps[index]
+        audioStartIndex = audioIndices[index]
+
+        markerWordTimestamp.append([markerAction, markerWord, timestamp, audioStartIndex])
+
+    return markerWordTimestamp
+
+
+
+
 
 def convertAudioUnixTimestampsToDatetime(timestamps, start=None):
     """
