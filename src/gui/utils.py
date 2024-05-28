@@ -1,7 +1,5 @@
 from PyQt5.QtWidgets import QHBoxLayout, QWidget, QLabel, QLineEdit
 
-# Background-color: rgba(255, 255, 255, 0)
-
 textBoxStyle = """
                         color: "#444";
                         border: 2px solid #999;
@@ -11,6 +9,7 @@ textBoxStyle = """
                         font-weight: bold;
                         font-size: 14px;
                     """        
+
 labelStyle = """
                     font-weight: bold; 
                     border: 0px solid black; 
@@ -19,6 +18,7 @@ labelStyle = """
                     font-weight: bold;
                     color: #555555
                 """
+
 buttonStyle = """
             QPushButton { 
                 background-color: #B0C4DE;
@@ -34,6 +34,7 @@ buttonStyle = """
                 background-color: #5F9EA0; 
                 border-style: inset; }"
         """
+
 comboBoxStyle = """
                     color: #444; 
                     font-weight: bold; 
@@ -47,7 +48,8 @@ layoutStyle = """
         border-radius: 5px;
         background: transparent        
     """
-def ConvertMarkerEventsToList(markerEvents):
+
+def convertMarkerEventsToList(markerEvents):
     listOfStrings = []
     for item in markerEvents:
         print(item)
@@ -56,7 +58,7 @@ def ConvertMarkerEventsToList(markerEvents):
      
     return listOfStrings
 
-def ConvertMappingsToListForMainDisplay(mappings):
+def convertMappingsToListForMainDisplay(mappings):
     listOfStrings = []
     for item in mappings:
         print(item)
@@ -65,11 +67,11 @@ def ConvertMappingsToListForMainDisplay(mappings):
      
     return listOfStrings
 
-def GetFileNameFromPath(filePath):
+def getFileNameFromPath(filePath):
     filename = filePath.split('/')[-1]
     return filename
       
-def ConvertEegEventsToList(events):
+def convertEegEventsToList(events):
     outputList = []
     for row in events:
         action = row[0]
@@ -81,14 +83,14 @@ def ConvertEegEventsToList(events):
         outputList.append(f"{action} ::: {startTime}  :::     {endTime} ::: {startIndex} ::: {endIndex} ::: {duration}")
     return outputList
 
-def ExtractWidgets(layout):
+def extractWidgets(layout):
     widgets = []
     for i in range(layout.count()):
         item = layout.itemAt(i)
         if isinstance(item, QHBoxLayout):
-            widgets.extend(ExtractWidgets(item))
+            widgets.extend(extractWidgets(item))
         elif isinstance(item, QWidget):
-            widgets.extend(ExtractWidgets(item.layout()))
+            widgets.extend(extractWidgets(item.layout()))
         elif isinstance(item.widget(), QLabel) or isinstance(item.widget(), QLineEdit):
             widgets.append(item.widget())
     return widgets
