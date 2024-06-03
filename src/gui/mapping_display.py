@@ -9,8 +9,8 @@ from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtCore import Qt, QUrl, QTimer, pyqtSignal, QThread
 from PyQt5.QtGui import QIcon
 
-from src.gui.utils import extractWidgets, buttonStyle
-from src.gui.utils import convertMappingsToListForMainDisplay
+from gui.utils import extractWidgets, buttonStyle
+from gui.utils import convertMappingsToListForMainDisplay
 import config as config
 from scipy.io.wavfile import write
 import os

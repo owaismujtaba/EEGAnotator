@@ -1,7 +1,8 @@
 import config as config
 import numpy as np
 
-from src.classes.utils import loadEdfFile, normalizeEegTriggers, eegEventsMapping, correctEegTriggers, eegTransitionTriggerPoints, convertEegUnixTimestampsToDatetime
+from classes.utils import loadEdfFile, normalizeEegTriggers, eegEventsMapping, correctEegTriggers
+from classes.utils import eegTransitionTriggerPoints, convertEegUnixTimestampsToDatetime
 
 def checkInterruptions(rawData, sfreq):
     print('Checking for Interruptions')

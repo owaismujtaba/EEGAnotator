@@ -5,11 +5,11 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon,  QPixmap
-from src.gui.utils import getFileNameFromPath, convertEegEventsToList, convertMarkerEventsToList, textBoxStyle, labelStyle, buttonStyle, comboBoxStyle, layoutStyle
-from src.classes.eeg import EegData
-from src.classes.audio import AudioData
-from src.classes.eeg_audio import EegAudioData
-from src.gui.mapping_display import EEGAudioApp
+from gui.utils import getFileNameFromPath, convertEegEventsToList, convertMarkerEventsToList, textBoxStyle, labelStyle, buttonStyle, comboBoxStyle, layoutStyle
+from classes.eeg import EegData
+from classes.audio import AudioData
+from classes.eeg_audio import EegAudioData
+from gui.mapping_display import EEGAudioApp
 import config as config
 
 class LoadEegThread(QThread):
