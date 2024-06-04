@@ -10,6 +10,7 @@ from gui.utils import  wrapLayoutInWidget, createQComboBox ,createQLabel, create
 from gui.utils import createQLineEdit,layoutStyle
 from classes.eeg import EegData
 from classes.audio import AudioData
+from classes.eeg_audio import EegAudioData
 from gui.mapping_display2 import MappingWindow
 
 class LoadEegThread(QThread):
@@ -49,6 +50,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         
         self.eegData = None
+        self.audioData = None
         self.edfFilePath = None
         self.xdfFilePath = None
 
@@ -489,8 +491,9 @@ class MainWindow(QMainWindow):
                 self.audioAndMarkersBundledTable.setItem(rowIndex, colIndex, QTableWidgetItem(str(data[rowIndex][colIndex])))
         
     def loadMappingWindow(self):
+        self.eegAudioData = EegAudioData(self.eegData, self.audioData)
         self.hide()
-        self.mappingPageViewer = MappingWindow()
+        self.mappingPageViewer = MappingWindow(self.eegAudioData)
         self.mappingPageViewer.aboutToClose.connect(self.showMainWindow)
         self.mappingPageViewer.show()
 

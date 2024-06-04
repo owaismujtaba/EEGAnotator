@@ -56,7 +56,11 @@ layoutStyle = """
         border-radius: 5px;
         background-color: #E0FFFF;        
     """
-
+layoutStyleItems = """
+        border: 0px solid black;
+        border-radius: 1px;
+        background-color: #E0FFFF;
+    """
 def jsonSideCar(metadata):
     pass
 
@@ -113,7 +117,7 @@ def createMappingListColors(mappings):
             
         return mappingsWithColor
 
-def wrapLayoutInWidget(layout):
+def wrapLayoutInWidget(layout, layoutStyle = layoutStyle):
         widget = QWidget()
         widget.setLayout(layout)
         widget.setStyleSheet(layoutStyle)  
