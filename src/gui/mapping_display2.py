@@ -73,9 +73,10 @@ class MappingWindow(QMainWindow):
         plotsLayoutWidget = self.setupPlotsLayout()
         playAndStopButtonsLayoutWidget = self.setupPlayAndStopButtonsLayout()
         mappingInformationLayout = self.setupMappingInformationLayout()
-        saveNextPreviousDiscardLayout = self.createSaveNextPreviousDiscardLayout()
+        #saveNextPreviousDiscardLayout = self.createSaveNextPreviousDiscardLayout()
         mainlayout.addWidget(plotsLayoutWidget)
         mainlayout.addWidget(playAndStopButtonsLayoutWidget)
+        mainlayout.addWidget(mappingInformationLayout)
         
 
         return mainlayout
@@ -85,10 +86,46 @@ class MappingWindow(QMainWindow):
         rowLayoWidget = wrapLayoutInWidget(rowLayout)
 
         markerWordEEGStartTimeWidget = self.setupMarkerWordEEGStartTimeWidget()
-        eegEndTimeEEGStartIndexEEGEndeIndexWidget = self.setupeegEndTimeEEGStartIndexEEGEndeIndexWidget()
+        #eegEndTimeEEGStartIndexEEGEndeIndexWidget = self.setupeegEndTimeEEGStartIndexEEGEndeIndexWidget()
+        #audioStartIndexDurationAudioStartTimeWidget = self.setupaudioStartIndexDurationAudioStartTime()
 
+        rowLayout.addWidget(markerWordEEGStartTimeWidget)
+        #rowLayout.addWidget(eegEndTimeEEGStartIndexEEGEndeIndexWidget)
+        #rowLayout.addWidget(audioStartIndexDurationAudioStartTimeWidget)
 
+        return rowLayoWidget
 
+    def setupMarkerWordEEGStartTimeWidget(self):
+        rowLayout = QVBoxLayout()
+        rowLayoWidget = wrapLayoutInWidget(rowLayout)
+
+        columnLayout = QHBoxLayout()
+        columnLayoutWidget = wrapLayoutInWidget(columnLayout)
+
+        markerLabel = createQLabel('Marker')
+        wordLabel = createQLabel('Word')
+        eegStartTime = createQLabel('Start Time EEG')
+
+        columnLayout.addWidget(markerLabel)
+        columnLayout.addWidget(wordLabel)
+        columnLayout.addWidget(eegStartTime)
+        
+        rowLayout.addWidget(columnLayoutWidget)
+
+        columnLayout = QHBoxLayout()
+        columnLayoutWidget = wrapLayoutInWidget(columnLayout)
+
+        self.markerText = createQLineEdit('')
+        self.WordText = createQLineEdit('')
+        self.eegStartTimeText = createQLineEdit('')
+
+        columnLayout.addWidget(self.markerText)
+        columnLayout.addWidget(self.WordText)
+        columnLayout.addWidget(self.eegStartTimeText)
+
+        rowLayout.addWidget(columnLayoutWidget)
+       
+        return rowLayoWidget
 
     def setupPlotsLayout(self):
         plotsLayout = QHBoxLayout()
