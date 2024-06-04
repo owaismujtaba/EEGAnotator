@@ -1,5 +1,4 @@
-from classes.utils import findClosestStartingPointInEeg
-from classes.utils import findingEegStartIndexEndIndexAndAudioIndexForMappings
+from src.classes.utils import findClosestStartingPointInEeg
 
 class EegAudioData:
     def __init__(self, eegDataObj, audioDataObject) -> None:
@@ -15,7 +14,6 @@ class EegAudioData:
             self.nearestEegStartPointToAudio, self.eegData.events, self.audioData.markersWordsTimestampsAudioStartIndex
         )
 
-        self.wordsWithEegAndAudiDetsils = findingEegStartIndexEndIndexAndAudioIndexForMappings(self.mappingEegEventsWithMarkers)
 
 
     def mapEegActionsToMarkerWords(self, startTimestampEeg, eegEvents, markersWordsTimestamps):

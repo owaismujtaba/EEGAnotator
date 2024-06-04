@@ -4,12 +4,12 @@ from PyQt5.QtWidgets import QMessageBox,  QLineEdit,  QListWidget
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon,  QPixmap
 
-from gui.utils import textBoxStyle, labelStyle, buttonStyle, comboBoxStyle, layoutStyle
-from gui.utils import getFileNameFromPath, convertEegEventsToList, convertMarkerEventsToList
-from classes.eeg import EegData
-from classes.audio import AudioData
-from classes.eeg_audio import EegAudioData
-from gui.mapping_display3 import EEGAudioApp
+from src.gui.utils import textBoxStyle, labelStyle, buttonStyle, comboBoxStyle, layoutStyle
+from src.gui.utils import getFileNameFromPath, convertEegEventsToList, convertMarkerEventsToList
+from src.classes.eeg import EegData
+from src.classes.audio import AudioData
+from src.classes.eeg_audio import EegAudioData
+from src.gui.mapping_display3 import EEGAudioApp
 import config as config
 
 class LoadEegThread(QThread):
@@ -385,8 +385,8 @@ class MainWindow(QMainWindow):
  
     
     def mapEegAndAudioBasedOnTriggersAndTime(self):
-        if self.eegData and self.audioData:
-            self.eegAudioData = EegAudioData(self.eegData, self.audioData)
+        #if self.eegData and self.audioData:
+            self.eegAudioData = ''# EegAudioData(self.eegData, self.audioData)
             self.hide()
             self.mappingPageViewer = EEGAudioApp(self.eegAudioData)
             self.mappingPageViewer.aboutToClose.connect(self.showMainWindow)
