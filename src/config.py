@@ -11,8 +11,5 @@ interruptionIntervalEEG  = 2.0
 windowIconPath  = str(Path(imageDir , 'icon.bmp'))
 backgroundImagePath  = str(Path(imageDir , 'background.jpg'))
 
-outputDir = 'Extracted'
-outputDir  = Path(curDir, outputDir )
-outputDirMetadata  = Path(outputDir , 'MATADATA')
-outputDirEEG  = Path(outputDir , 'EEG')
-outputDirAudio  = Path(outputDir , 'AUDIO')
+audioPlayDir = str(Path(curDir, 'AudioFilesForPlaying'))
+bidsDir = str(Path(curDir, 'BIDS'))
