@@ -506,8 +506,9 @@ class MainWindow(QMainWindow):
         rowLayout = QVBoxLayout()
         rowLayoutWidget = wrapLayoutInWidget(rowLayout)
 
-        styleTitle = f'<center><b><font color="#8B0000" size="8">{title} </font></b></center>'
+        styleTitle = f'<center><b><font color="#000080" size="8">{title} </font></b></center>'
         headerWidget = QLabel(styleTitle)
+        #headerWidget.setStyleSheet(layoutHeader)
         rowLayout.addWidget(headerWidget)
         return rowLayoutWidget
 

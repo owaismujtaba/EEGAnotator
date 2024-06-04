@@ -7,7 +7,7 @@ size_policy = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
 
 
 textBoxStyle = """
-                        color: "#444";
+                        color: "solid red";
                         border: 2px solid green;
                         border-radius: 3px;
                         background-color: #f5f5f5;
@@ -20,10 +20,10 @@ labelStyle = """
                     color: "green";
                     border: 2px solid red;
                     border-radius: 0px;
-                    background-color: yellow;
+                    background-color: ;
                     font-family: Arial, sans-serif;
                     font-weight: bold;
-                    font-size: 10px;
+                    font-size: 13px;
                 """
 
 buttonStyle = """
@@ -35,7 +35,8 @@ buttonStyle = """
                 border-radius: 3px; 
                 border-color: red; padding: 4px; 
                 font-weight: bold;
-                color : black
+                color : black;
+                font-size: 13px;
             } 
             
             QPushButton:pressed { 
@@ -81,11 +82,11 @@ def createQPushButton(title):
 
     return button
 
-def createQLineEdit(title):
+def createQLineEdit(title, enable=True):
     text = QLineEdit(title)
     text.setStyleSheet(textBoxStyle)
     text.setSizePolicy(size_policy)
-    text.setReadOnly(True)
+    text.setReadOnly(enable)
 
     return text
 

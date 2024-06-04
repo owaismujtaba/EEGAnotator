@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout
 from PyQt5.QtWidgets import QVBoxLayout, QLabel,QLineEdit ,QTableWidget,QTableWidgetItem, QFileDialog, QMessageBox
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QColor
 import pyqtgraph as pg
 import numpy as np
 import config
@@ -10,7 +10,9 @@ from gui.utils import  wrapLayoutInWidget, createQComboBox ,createQLabel, create
 from gui.utils import createQLineEdit,layoutStyle, extractWidgets
 from classes.eeg import EegData
 from classes.audio import AudioData
-
+import config
+import os
+from pathlib import Path
 
 class MappingWindow(QMainWindow):
     aboutToClose = pyqtSignal()
@@ -18,6 +20,7 @@ class MappingWindow(QMainWindow):
         super().__init__()
         
         self.eegAudioData = eegAudioData
+        self.audioSamplingRate = self.eegAudioData.audioData.samplingFrequency
         
         self.setWindowTitle('Mapping EEG and AUDIO Data')
         self.setGeometry(500, 300, 1300, 300)
@@ -38,15 +41,19 @@ class MappingWindow(QMainWindow):
     def setupLayouts(self):
         mappingsLayout = self.setupMappingsLayout()
         plotsAndOtherLayout = self.setupPlotsAndOtherLayout()
-
         self.connectSignals()
+        
         return mappingsLayout, plotsAndOtherLayout
     
     def connectSignals(self):
-        
         self.connectMappingsSignals()
         #self.connectAudioSignals() 
+        self.connectPreviousNextSaveDiscardSignals()
 
+    def connectPreviousNextSaveDiscardSignals(self):
+        self.previousButton.clicked.connect(self.previousMappingInfoLayout)
+        self.nextButton.clicked.connect(self.nextMappingInfoLayout)
+        self.discardButton.clicked.connect(self.nextMappingInfoLayout)
 
     def connectMappingsSignals(self):
         self.mappingTableWidget.cellClicked.connect(self.mappingDataCellClicked)
@@ -97,13 +104,13 @@ class MappingWindow(QMainWindow):
         rowLayoWidget = wrapLayoutInWidget(rowLayout)
 
 
-        patientID = createQLabel('PatientID: ')
-        self.patientID = createQLineEdit('')
+        subjectID = createQLabel('PatientID: ')
+        self.subjectID = createQLineEdit('', enable=False)
         sessionID = createQLabel('Session No.')
-        self.sessionID = createQLineEdit('')
+        self.sessionID = createQLineEdit('', enable=False)
 
-        rowLayout.addWidget(patientID)
-        rowLayout.addWidget(self.patientID)
+        rowLayout.addWidget(subjectID)
+        rowLayout.addWidget(self.subjectID)
         rowLayout.addWidget(sessionID)
         rowLayout.addWidget(self.sessionID)
 
@@ -279,9 +286,11 @@ class MappingWindow(QMainWindow):
             for colIndex in range(9):
                 self.mappingTableWidget.setItem(rowIndex, colIndex, QTableWidgetItem(str(data[rowIndex][colIndex])))
 
-
+        self.changeRowColors()
     def mappingDataCellClicked(self, row):
-        self.nextMappingRow = row +1
+        if row != 0:
+            self.previousMappingRow = row - 1
+        self.currentMappingRow = row
         rowData = []
         for col in range(self.mappingTableWidget.columnCount()):
             item = self.mappingTableWidget.item(row, col)
@@ -300,15 +309,53 @@ class MappingWindow(QMainWindow):
         count = 0
         for widget in widgets:
             if isinstance(widget, QLineEdit):
+                if count == 0:
+                    self.currentTask = 0
                 widget.setText(rowData[count])
                 count += 1
 
     def nextMappingInfoLayout(self):
         rowData = []
         for col in range(self.mappingTableWidget.columnCount()):
-            item = self.mappingTableWidget.item(self.nextMappingRow, col)
+            item = self.mappingTableWidget.item(self.currentMappingRow + 1, col)
             if item is not None:
                 rowData.append(item.text())
             
-        self.nextMappingRow += 1
+        self.currentMappingRow += 1
         self.updateMappingInfoLayout(rowData)
+
+    def previousMappingInfoLayout(self):
+        if self.currentMappingRow != 0:
+            rowData = []
+            for col in range(self.mappingTableWidget.columnCount()):
+                item = self.mappingTableWidget.item(self.currentMappingRow - 1, col)
+                if item is not None:
+                    rowData.append(item.text())
+                
+            self.currentMappingRow -= 1
+
+            self.updateMappingInfoLayout(rowData)
+
+    def playAudioButtion(self):
+        os.makedirs(config.audioPlayDir, exist_ok=True)
+        if self.subjectID and self.sessionID:
+            self.saveFileDir = Path(config.bidsDir, self.subjectID.text, self.sessionID.text)
+            os.makedirs(self.saveFileDir, exist_ok=True)
+            self.fileName = ''
+        else:
+            QMessageBox.critical(self, "Error", f"Enter Subject ID and Session ID")
+
+    def changeRowColors(self):
+        color = "#FFFF00"
+        for row in range(self.mappingTableWidget.rowCount()):
+            item = self.mappingTableWidget.item(row, 0) 
+            value = item.text()  
+            if value == 'StartBlockThinking':
+                color = "#FFC0CB"
+            if value == 'StartBlockSaying':
+                color = "#FFFF00" 
+          
+            for col in range(self.mappingTableWidget.columnCount()):
+                item = self.mappingTableWidget.item(row, col)
+                if item is not None:
+                    item.setBackground(QColor(color))
