@@ -2,14 +2,14 @@ import numpy as np
 import pyqtgraph as pg
 import soundfile as sf
 from PyQt5.QtWidgets import (
-    QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget,
+    QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget,QListWidgetItem,
     QListWidget, QGroupBox, QLabel, QLineEdit, QMessageBox, QApplication
 )
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtCore import Qt, QUrl, QTimer, pyqtSignal, QThread
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QColor
 
-from src.gui.utils import extractWidgets, buttonStyle
+from src.gui.utils import extractWidgets, buttonStyle, createMappingListColors
 from src.gui.utils import convertMappingsToListForMainDisplay
 import config as config
 from scipy.io.wavfile import write
@@ -52,6 +52,16 @@ class SaveWorker(QThread):
             self.finished.emit()
         except Exception as e:
             self.error.emit(str(e))
+
+class ColoredListWidgetItem(QListWidgetItem):
+    def __init__(self, text, color=None):
+        super().__init__(text)
+        self._color = color
+
+    def data(self, role):
+        if role == self.foreground() and self._color is not None:
+            return self._color
+        return super().data(role)
 
 
 class EEGAudioApp(QMainWindow):
@@ -116,13 +126,25 @@ class EEGAudioApp(QMainWindow):
         listLayout = QVBoxLayout()
         
         self.listWidget = QListWidget()
-        self.listWidget.addItems(self.mappingListItems)
+        #self.listWidget.addItems(self.mappingListItems)
+        #self.createMappingListColors()
+
+        mappingsWithColor = createMappingListColors(self.mappingListItems)
+        
+        self.populateListWidget(mappingsWithColor)
         self.listWidget.currentItemChanged.connect(self.updateInfoFromListItem)
         
         listLayout.addWidget(self.listWidget)
         listGroupBox.setLayout(listLayout)
 
         return listGroupBox
+
+    def populateListWidget(self,  mappingsWithColor):
+        for text, color in mappingsWithColor:
+            item = ColoredListWidgetItem(text, color)
+            item.setForeground(color)
+            self.listWidget.addItem(item)
+    
 
     def createEegPlotWidget(self):
         plotWidget = pg.PlotWidget(title="EEG Activity")

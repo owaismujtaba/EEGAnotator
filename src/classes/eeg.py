@@ -1,7 +1,7 @@
 import config as config
 import numpy as np
 
-from src.classes.utils import loadEdfFile, normalizeEegTriggers, eegEventsMapping, correctEegTriggers, eegTransitionTriggerPoints, convertEegUnixTimestampsToDatetime
+from classes.utils import loadEdfFile, normalizeEegTriggers, eegEventsMapping, correctEegTriggers, eegTransitionTriggerPoints, convertEegUnixTimestampsToDatetime
 
 def checkInterruptions(rawData, sfreq):
     print('Checking for Interruptions')
@@ -84,14 +84,14 @@ class EegData:
         """
         self.rawData = loadEdfFile(self.filePath)
         self.nChannels = self.rawData.info['nchan']
-        self.badChannels = self.rawData.info['bads']
+        self.badChannels = list(self.rawData.info['bads'])
         self.startTime = self.rawData.info['meas_date']
         self.channelNames = self.rawData.ch_names
         self.samplingFrequency = self.rawData.info['sfreq']
         self.triggers = self.rawData['TRIG'][0][0]
         self.duration = self.rawData.n_times / self.samplingFrequency
         self.timeStamps = self.rawData.times + self.rawData.info['meas_date'].timestamp()
-        
+        self.goodChannels = [item for item in self.channelNames if item not in self.badChannels]
 
     def preprocessEegData(self):
         """

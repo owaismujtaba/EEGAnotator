@@ -32,6 +32,7 @@ pyqt5-tools==5.15.9.3.3
 pyqtgraph==0.13.7
 python-dotenv==1.0.1
 pytz==2024.1
+pywin32==306
 pyxdf==1.16.6
 qt5-applications==5.15.2.2.3
 qt5-tools==5.15.2.1.3

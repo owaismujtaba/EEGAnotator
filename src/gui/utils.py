@@ -1,33 +1,41 @@
-from PyQt5.QtWidgets import QHBoxLayout, QWidget, QLabel, QLineEdit
+from PyQt5.QtWidgets import QHBoxLayout, QWidget, QLabel, QLineEdit, QSizePolicy
+from PyQt5.QtWidgets import QPushButton, QComboBox, QListWidget
+from PyQt5.QtGui import QColor
+
+size_policy = QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+
+
 
 textBoxStyle = """
                         color: "#444";
-                        border: 2px solid #999;
-                        border-radius: 5px;
+                        border: 2px solid green;
+                        border-radius: 3px;
                         background-color: #f5f5f5;
                         font-family: Arial, sans-serif;
                         font-weight: bold;
-                        font-size: 14px;
+                        font-size: 10px;
                     """        
 
 labelStyle = """
-                    font-weight: bold; 
-                    border: 0px solid black; 
-                    border-radius: 5px;
-                    font-size: 14px;
+                    color: "green";
+                    border: 2px solid red;
+                    border-radius: 0px;
+                    background-color: yellow;
+                    font-family: Arial, sans-serif;
                     font-weight: bold;
-                    color: #555555
+                    font-size: 10px;
                 """
 
 buttonStyle = """
             QPushButton { 
-                background-color: #B0C4DE;
+                background-color: #ADD8E6;
                 color: black;
                 border-style: outset; 
                 border-width: 2px; 
-                border-radius: 5px; 
-                border-color: beige; padding: 4px; 
-                font-weight: bold
+                border-radius: 3px; 
+                border-color: red; padding: 4px; 
+                font-weight: bold;
+                color : black
             } 
             
             QPushButton:pressed { 
@@ -36,7 +44,7 @@ buttonStyle = """
         """
 
 comboBoxStyle = """
-                    color: #444; 
+                    color: black; 
                     font-weight: bold; 
                     background-color: #ff9999; 
                     border: 2px solid #999; 
@@ -44,10 +52,73 @@ comboBoxStyle = """
                 """
 
 layoutStyle = """
-        border: 2px solid #ccc;
+        border: 2px solid black;
         border-radius: 5px;
-        background: transparent        
+        background-color: #E0FFFF;        
     """
+
+def jsonSideCar(metadata):
+    pass
+
+def setTextProperty(item, value):
+    item.setText(str(value))
+
+def createQLabel(title):
+    label = QLabel(title)
+    label.setStyleSheet(labelStyle)
+    label.setSizePolicy(size_policy)
+
+    return label
+
+def createQPushButton(title):
+    button = QPushButton(title)
+    button.setStyleSheet(buttonStyle)
+    button.setSizePolicy(size_policy)
+
+    return button
+
+def createQLineEdit(title):
+    text = QLineEdit(title)
+    text.setStyleSheet(textBoxStyle)
+    text.setSizePolicy(size_policy)
+    text.setReadOnly(True)
+
+    return text
+
+def createQComboBox(title):
+    box = QComboBox()
+    box.addItem(title)
+    box.setStyleSheet(comboBoxStyle)
+
+    return box
+
+def createQListWidget():
+
+    listWidget = QListWidget()
+    listWidget.setStyleSheet(comboBoxStyle)
+
+    return listWidget
+
+def createMappingListColors(mappings):
+        mappingsWithColor = []
+        color = 'red'
+        for mapping in mappings:
+            block = mapping.split(',')[0]
+            if block == 'StartBlockSaying':
+                color = 'red'
+            if block == 'StartBlockThinking':
+                color ='green'
+
+            mappingsWithColor.append([mapping, QColor(color)])
+            
+        return mappingsWithColor
+
+def wrapLayoutInWidget(layout):
+        widget = QWidget()
+        widget.setLayout(layout)
+        widget.setStyleSheet(layoutStyle)  
+        return widget
+
 
 def convertMarkerEventsToList(markerEvents):
     listOfStrings = []
@@ -61,7 +132,7 @@ def convertMarkerEventsToList(markerEvents):
 def convertMappingsToListForMainDisplay(mappings):
     listOfStrings = []
     for item in mappings:
-        print(item)
+        
         item = ','.join(str(x) for x in item)
         listOfStrings.append(item)
      
@@ -74,13 +145,14 @@ def getFileNameFromPath(filePath):
 def convertEegEventsToList(events):
     outputList = []
     for row in events:
+        print(row)
         action = row[0]
         startTime = row[1]
         endTime = row[2]
         startIndex = row[3]
         endIndex = row[4]
         duration = row[5]
-        outputList.append(f"{action} ::: {startTime}  :::     {endTime} ::: {startIndex} ::: {endIndex} ::: {duration}")
+        outputList.append(f"{action} ::: {round(startTime)}  :::     {round(endTime)} ::: {startIndex} ::: {endIndex} ::: {duration}")
     return outputList
 
 def extractWidgets(layout):
