@@ -442,6 +442,7 @@ class MainWindow(QMainWindow):
             for colIndex in range(6):
                 self.eegEventsTable.setItem(rowIndex, colIndex, QTableWidgetItem(str(data[rowIndex][colIndex])))
 
+        self.eegEventsTable.verticalHeader().setSectionResizeMode(self.eegEventsTable.verticalHeader().ResizeToContents)
 
 
     ################################################################################
@@ -490,6 +491,8 @@ class MainWindow(QMainWindow):
             for colIndex in range(4):
                 self.audioAndMarkersBundledTable.setItem(rowIndex, colIndex, QTableWidgetItem(str(data[rowIndex][colIndex])))
         
+        self.audioAndMarkersBundledTable.verticalHeader().setSectionResizeMode(self.audioAndMarkersBundledTable.verticalHeader().ResizeToContents)
+
     def loadMappingWindow(self):
         self.eegAudioData = EegAudioData(self.eegData, self.audioData)
         self.hide()

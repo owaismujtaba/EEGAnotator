@@ -286,6 +286,7 @@ class MappingWindow(QMainWindow):
             for colIndex in range(9):
                 self.mappingTableWidget.setItem(rowIndex, colIndex, QTableWidgetItem(str(data[rowIndex][colIndex])))
 
+        self.mappingTableWidget.verticalHeader().setSectionResizeMode(self.mappingTableWidget.verticalHeader().ResizeToContents)
         self.changeRowColors()
     def mappingDataCellClicked(self, row):
         if row != 0:
