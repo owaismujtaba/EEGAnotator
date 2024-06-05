@@ -12,13 +12,13 @@ def get_requirements(file_path: str) -> List[str]:
     return requirements
 
 setup(
-    name='EEG_AUDIO_Anotator',
+    name='eegAudioAnotator',
     version='1.0.0',
     author='Owais Mujtaba Khanday',
     author_email='owais.mujtaba123@gmail.com',
     url='https://github.com/owaismujtaba/EEGAnotator',
+    packages=find_packages('src'),
     package_dir={'': 'src'},
-    packages=find_packages(where='src'),
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: GPL-3.0 License',

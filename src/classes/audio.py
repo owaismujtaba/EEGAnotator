@@ -1,5 +1,7 @@
-from classes.utils import convertAudioUnixTimestampsToDatetime, loadXdfFile, calculateTimeGaps, bundleAudioMarkersWithTimestamps
+from src.classes.utils import convertAudioUnixTimestampsToDatetime, loadXdfFile, calculateTimeGaps, bundleAudioMarkersWithTimestamps
 import config as config
+
+
 
 class AudioData:
     """
