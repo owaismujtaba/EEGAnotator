@@ -1,10 +1,13 @@
 from PyQt5.QtWidgets import QApplication
-from gui.main_display import MainWindow
-from classes.eeg import EegData
+from src.gui.main_display import MainWindow
 import sys
 
-if __name__ == '__main__':
+def main():
     App = QApplication(sys.argv)
-    MainWindow = MainWindow()
-    MainWindow.show()
+    mainWindow = MainWindow()
+    mainWindow.show()
     sys.exit(App.exec_())
+
+
+if __name__ == '__main__':
+    main()
