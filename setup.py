@@ -24,7 +24,7 @@ setup(
     install_requires = get_requirements('requirements.txt'),
     entry_points={
         "console_scripts": [
-            "eeganotate=main:main",
+            "eeganotate=src.main:main",
         ]
     }
 )
