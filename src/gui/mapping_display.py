@@ -150,6 +150,7 @@ class MappingWindow(QMainWindow):
 
     def connectSaveBIDSSignals(self):
         self.saveButton.clicked.connect(self.saveFilesInBIDSFormat)
+        self.saveAllMappingsButton.clicked.connect(self.saveeAllFilesInBIDSFormat)
  
     
     ################################################################################
@@ -187,15 +188,26 @@ class MappingWindow(QMainWindow):
         mappingInformationLayoutWidget = self.setupMappingInformationLayout()
         bidsInfoLayoutWidget = self.setupBIDSInfoLayout()
         saveNextPreviousDiscardLayoutWidget = self.setupSaveNextPreviousDiscardLayout()
+        saveAllMappingsLayoutWidget = self.setupSaveAllMappingsLayout()
         
         mainlayout.addWidget(plotsLayoutWidget)
         mainlayout.addWidget(playAndStopButtonsLayoutWidget)
         mainlayout.addWidget(mappingInformationLayoutWidget)
         mainlayout.addWidget(bidsInfoLayoutWidget)
         mainlayout.addWidget(saveNextPreviousDiscardLayoutWidget)
+        mainlayout.addWidget(saveAllMappingsLayoutWidget)
        
 
         return mainlayout
+
+    def setupSaveAllMappingsLayout(self):
+        rowLayout = QHBoxLayout()
+        rowLayoWidget = wrapLayoutInWidget(rowLayout)
+
+        self.saveAllMappingsButton = createQPushButton('Save All')
+        rowLayout.addWidget(self.saveAllMappingsButton)
+
+        return rowLayoWidget
     
     def setupBIDSInfoLayout(self):
         rowLayout = QHBoxLayout()
@@ -445,16 +457,34 @@ class MappingWindow(QMainWindow):
         self.channelNames = self.eegAudioData.eegData.channelNames
 
     def saveFilesInBIDSFormat(self):
-        self.saveMessageBox = self.showWaitingMessage('Saving files')
-        self.saveMessageBox.setWindowTitle("Saving")
-        self.setupDirsForSavingFiles()
-        self.setupFilePathsForSavingFilesBIDSFormat()
-        self.extractDataForCurrentRun()
-        self.saveWorker = SaveWorker(self)
-        self.saveWorker.finished.connect(self.onSaveFinished)
-        self.saveWorker.error.connect(self.onSaveError)
-        self.saveWorker.start()
+        if self.subjectID.text() != '' and self.sessionID.text() != '':
+            self.saveMessageBox = self.showWaitingMessage('Saving files')
+            self.saveMessageBox.setWindowTitle("Saving")
+            self.setupDirsForSavingFiles()
+            self.setupFilePathsForSavingFilesBIDSFormat()
+            self.extractDataForCurrentRun()
+            self.saveWorker = SaveWorker(self)
+            self.saveWorker.finished.connect(self.onSaveFinished)
+            self.saveWorker.error.connect(self.onSaveError)
+            self.saveWorker.start()
+        else:
+            QMessageBox.critical(self, "Error", f"Enter Subject ID and Session ID")
         
+    def saveeAllFilesInBIDSFormat(self):
+        if self.subjectID.text() != '' and self.sessionID.text() != '':         
+            self.saveMessageBox = self.showWaitingMessage('Saving All files')
+            self.saveMessageBox.setWindowTitle("Saving")
+            for run in range(self.mappingTableWidget.rowCount()):
+                self.setupDirsForSavingFiles()
+                self.setupFilePathsForSavingFilesBIDSFormat()
+                self.extractDataForCurrentRun()
+                self.saveWorker = SaveWorker(self)
+                self.currentMappingRow += 1
+                self.saveWorker.finished.connect(self.onSaveFinished)
+                self.saveWorker.error.connect(self.onSaveError)
+                self.saveWorker.start()
+        else:
+            QMessageBox.critical(self, "Error", f"Enter Subject ID and Session ID")
 
     def setupDirsForSavingFiles(self):
         if not self.checkDirectorySetup:
@@ -463,12 +493,8 @@ class MappingWindow(QMainWindow):
                 self.subjectDirName = f'sub-{self.subjectID.text()}'
                 self.SessionDirName = f'ses-{self.sessionID.text()}'
                 self.subjectAndSessionDir = Path(config.bidsDir, self.subjectDirName, self.SessionDirName)
-                print(self.subjectAndSessionDir)
                 os.makedirs(self.subjectAndSessionDir, exist_ok=True)
                 self.subjectAndSessionDirName = f'{self.subjectDirName}_{self.SessionDirName}'
-
-                print(self.subjectDirName, self.SessionDirName)
-                print(self.subjectAndSessionDir, self.subjectAndSessionDirName)
             else:
                 QMessageBox.critical(self, "Error", f"Enter Subject ID and Session ID")
 
@@ -527,6 +553,7 @@ class MappingWindow(QMainWindow):
     def onSaveError(self, errorMessage):
         self.saveMessageBox.accept()
         QMessageBox.critical(self, "Error", f"Failed to load EEG data: {errorMessage}")
+        return 'Error'
 
     def showWaitingMessage(self, message):
         waitingMsgBox = QMessageBox()
@@ -539,4 +566,6 @@ class MappingWindow(QMainWindow):
         return waitingMsgBox
     
     def onSaveFinished(self):
+        self.mappingTableWidget.removeRow(self.currentMappingRow)
+        self.currentMappingRow = 0
         self.saveMessageBox.accept()
