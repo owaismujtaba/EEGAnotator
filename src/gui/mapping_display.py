@@ -1,23 +1,23 @@
-import numpy as np
-import pyqtgraph as pg
-import soundfile as sf
-from PyQt5.QtWidgets import (
-    QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget,
-    QListWidget, QGroupBox, QLabel, QLineEdit, QMessageBox, QApplication
-)
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QHeaderView
+from PyQt5.QtWidgets import QVBoxLayout, QLabel,QLineEdit ,QTableWidget,QTableWidgetItem,  QMessageBox
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QUrl
+from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
-from PyQt5.QtCore import Qt, QUrl, QTimer, pyqtSignal, QThread
-from PyQt5.QtGui import QIcon
-
-from src.gui.utils import extractWidgets, buttonStyle
-from src.gui.utils import convertMappingsToListForMainDisplay
-import config as config
+import pyqtgraph as pg
+import numpy as np
 from scipy.io.wavfile import write
+import soundfile as sf
+import json
+import pandas as pd
+import config
+from gui.utils import getRowBackgroundColorFromTable, layoutStyleItems
+from gui.utils import  wrapLayoutInWidget, createQLabel, createQPushButton
+from gui.utils import createQLineEdit,layoutStyle, extractWidgets, extractRowDataFromTable
+from classes.eeg import EegData
+from classes.audio import AudioData
+import config
 import os
 from pathlib import Path
-import json
-import os
-
 
 class SaveWorker(QThread):
     finished = pyqtSignal()
@@ -28,154 +28,212 @@ class SaveWorker(QThread):
 
     def run(self):
         try:
-            metaData = {
-                'audioFileName': str(self.app.audioFileNameToSavePath),
-                'eegFileName': str(self.app.eegFileNameToSavePath),
-                'action': self.app.marker,
-                'word': self.app.word,
-                'eegStartIndex': self.app.eegStartIndex,
-                'eegEndIndex': self.app.eegEndIndex,
-                'audioStartIndex': self.app.audioStartIndex,
-                'audioEndIndex': self.app.audioEndIndex,
-                'channelNames':self.app.channelNames
-            }
-            with open(str(self.app.metaDataFileNameToSavePath), 'w') as jsonFile:
-                json.dump(metaData, jsonFile)
-            np.save(self.app.audioFileNameToSavePath, self.app.audioSample)
-
-            sliced_raw = self.app.eegAudioData.eegData.rawData.copy().crop(
-                tmin=metaData['eegStartIndex'] /self.app.eegAudioData.eegData.samplingFrequency, 
-                tmax=metaData['eegEndIndex'] / self.app.eegAudioData.eegData.samplingFrequency
-            )
-
-            sliced_raw.save(metaData['eegFileName'], overwrite=True)
+            saveDir = self.app.subjectAndSessionDir
+            self.eegFileNameWithPath = Path(saveDir, f'{self.app.fullFilePathBidsFormat}.fif')
+            self.sideCarJsonFileNameWithPath = Path(saveDir, f'{self.app.fullFilePathBidsFormat}json')
+            self.audioFileNameWithPath = Path(saveDir, f'{self.app.fullFilePathBidsFormat}.wav')
+            self.eventsFileNameWithPath = Path(saveDir, f'{self.app.fullFilePathBidsFormat}.tsv')
+            self.saveFiles()
             self.finished.emit()
         except Exception as e:
             self.error.emit(str(e))
 
+    def saveFiles(self):
+        print('Saving Files')
+        self.saveSideCar()
+        self.saveAudioFile()
+        self.saveEventsFile()
+        self.saveEEGFile()
+        
+    def saveEEGFile(self):
+        filePath = self.eegFileNameWithPath
+        self.app.eegSampleData.save(filePath, overwrite=True)
 
-class EEGAudioApp(QMainWindow):
+    def saveEventsFile(self):
+        filePath = self.eventsFileNameWithPath
+        eventsData = { "onset": [self.app.eegStartTime], "duration": [self.app.eegDuration], "trial_type": [self.app.currentBlock]}
+        eventsData = pd.DataFrame(eventsData)
+        eventsData.to_csv(filePath, sep='\t', index=False)
+
+    def saveAudioFile(self):
+        filePath = self.audioFileNameWithPath
+        write(filePath, int(self.app.audioSamplingRate), self.app.audioSampleData)
+    
+    def saveSideCar(self):
+        jsonMetaData = {}
+        filepath = self.sideCarJsonFileNameWithPath
+
+        jsonMetaData['TaskName'] = self.app.currentBlock
+        jsonMetaData['Marker'] = self.app.marker
+        jsonMetaData['EEEGSamplingFrequency'] = self.app.eegSamplingRate
+        jsonMetaData['AudioSamplingFrequency'] = self.app.audioSamplingRate
+        jsonMetaData['EEGStartTime'] = self.app.eegStartTime
+        jsonMetaData['EEGEndTime'] = self.app.eegEndTime
+        jsonMetaData['AudioStartTime'] = self.app.audioStartTime
+        jsonMetaData['EEGStartIndex'] = self.app.eegStartIndex
+        jsonMetaData['EEGEndIndex'] = self.app.eegEndIndex
+        jsonMetaData['AudioStartIndex'] = self.app.audioStartIndex
+        jsonMetaData['AudioEndIndex'] = self.app.audioEndIndex
+        jsonMetaData['EEGDuration'] = self.app.eegDuration
+        jsonMetaData['EEGReference'] = 'Cz'
+        jsonMetaData['EEGChannelCount'] = self.app.eegAudioData.eegData.nChannels
+        jsonMetaData['GoodChannels'] = self.app.eegAudioData.eegData.goodChannels
+        jsonMetaData['BadChannels'] = self.app.eegAudioData.eegData.badChannels
+        
+        with open(filepath, 'w') as jsonFile:
+            json.dump(jsonMetaData, jsonFile, indent=4)
+
+class MappingWindow(QMainWindow):
     aboutToClose = pyqtSignal()
-
-    def __init__(self, eegDaudioData):
+    def __init__(self, eegAudioData):
         super().__init__()
-        self.setupDirectories()
-        self.eegAudioData = eegDaudioData
-        self.mappings = self.eegAudioData.mappingEegEventsWithMarkers
-        self.mappingListItems = convertMappingsToListForMainDisplay(self.mappings)
+        
+        self.eegAudioData = eegAudioData
+        self.audioSamplingRate = self.eegAudioData.audioData.samplingFrequency
+        self.eegSamplingRate = self.eegAudioData.eegData.samplingFrequency
+        self.backgroundColorPictureNamingSayingBlock = '#ffff00'
+        self.backgroundColorPictureNamingImaginingBlock = '#ffc0cb'
+        self.checkDirectorySetup = False
+        self.currentBlock = None
+        self.runCountPictureNamingSaying = {}
+        self.runCountPictureNamingImagning = {}
+        self.currentMappingRow = 0
+        self.audioSampleData = None
+        self.eegSampleData = None
+
+        self.setWindowTitle('Mapping EEG and AUDIO Data')
+        self.setGeometry(500, 300, 1300, 300)
+        self.setWindowIcon(QIcon(config.windowIconPath)) 
+        self.setStyleSheet("background-color: #f0f0f0;")
+        
+        centralWidget = QWidget()
+        self.setCentralWidget(centralWidget)
+        self.mainLayout = QHBoxLayout()
+        centralWidget.setLayout(self.mainLayout)
+
+        mappingsLayout, plotsAndOther = self.setupLayouts()
+
+        self.mainLayout.addLayout(mappingsLayout, 20)  
+        self.mainLayout.addLayout(plotsAndOther, 19)
+        self.setMappingTableData()
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.updateAudioPlot)
         self.audioIndex = 0
 
-        self.initUI()
-
-    def setupDirectories(self):
-        os.makedirs(config.outputDirAudio, exist_ok=True)
-        os.makedirs(config.outputDirEEG, exist_ok=True)
-        os.makedirs(config.outputDirMetadata, exist_ok=True)
-
-    def initUI(self):
-        self.mainWidget = QWidget()
-        self.setCentralWidget(self.mainWidget)
-        self.setWindowIcon(QIcon(config.windowIconPath))
-
-        mainLayout = QVBoxLayout()
-        topLayout, bottomLayout = self.createMainLayouts()
-
-        mainLayout.addLayout(topLayout)
-        mainLayout.addLayout(bottomLayout)
-
-        self.mainWidget.setLayout(mainLayout)
-
-        self.setWindowTitle('EEG and Audio Viewer')
-        self.setGeometry(100, 100, 1200, 600)
-
         self.mediaPlayer = QMediaPlayer()
+    
+    def setupLayouts(self):
+        mappingsLayout = self.setupMappingsLayout()
+        plotsAndOtherLayout = self.setupPlotsAndOtherLayout()
+        self.connectSignals()
+        
+        return mappingsLayout, plotsAndOtherLayout
 
-    def createMainLayouts(self):
-        topLayout = self.createTopLayout()
-        bottomLayout = self.createBottomLayout()
-        return topLayout, bottomLayout
+    def connectSignals(self):
+        self.connectMappingsSignals()
+        self.connectAudioSignals() 
+        self.connectPreviousNextSaveDiscardSignals()
+        self.connectSaveBIDSSignals()
 
-    def createTopLayout(self):
-        topLayout = QHBoxLayout()
+    def connectMappingsSignals(self):
+        self.mappingTableWidget.cellClicked.connect(self.mappingDataCellClicked)
 
-        self.listGroupBox = self.createListGroupBox()
-        self.eegPlotWidget = self.createEegPlotWidget()
-        self.audioPlotWidget = self.createAudioPlotWidget()
+    def connectAudioSignals(self):
+        self.playAudioButton.clicked.connect(self.playAudioFile)
+        self.stopAudioButton.clicked.connect(self.stopAudioButtonFunction)
 
-        topLayout.addWidget(self.listGroupBox)
-        topLayout.addWidget(self.eegPlotWidget)
-        topLayout.addWidget(self.audioPlotWidget)
-        
-        return topLayout
+    def connectPreviousNextSaveDiscardSignals(self):
+        self.previousButton.clicked.connect(self.previousMappingInfoLayout)
+        self.nextButton.clicked.connect(self.nextMappingInfoLayout)
+        self.discardButton.clicked.connect(self.nextMappingInfoLayout)
 
-    def createListGroupBox(self):
-        listGroupBox = QGroupBox("Mappings")
-        listLayout = QVBoxLayout()
-        
-        self.listWidget = QListWidget()
-        self.listWidget.addItems(self.mappingListItems)
-        self.listWidget.currentItemChanged.connect(self.updateInfoFromListItem)
-        
-        listLayout.addWidget(self.listWidget)
-        listGroupBox.setLayout(listLayout)
+    def connectSaveBIDSSignals(self):
+        self.saveButton.clicked.connect(self.saveFilesInBIDSFormat)
+ 
+    
+    ################################################################################
+    #############################  Mappings Table Layout ###########################
+    ################################################################################
 
-        return listGroupBox
+    def setupMappingsLayout(self):
+        mainLayout = QHBoxLayout()
+        
+        self.mappingTableWidget = QTableWidget()
+        self.mappingTableWidget.setStyleSheet(layoutStyle)
+        self.mappingTableWidget.setRowCount(0)
+        self.mappingTableWidget.setColumnCount(9)
+        headers = ["Marker", "Word", "EEG Start Time", "EEG End Time", "EEG Start Index", "EEG End Index", "Audio Start Index", "Duration", 'Audio Start Time']
+        self.mappingTableWidget.setHorizontalHeaderLabels(headers)
+        header = self.mappingTableWidget.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+        self.mappingTableWidget.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        
+        mainLayout.addWidget(self.mappingTableWidget)
+        
+        return mainLayout
+    
 
-    def createEegPlotWidget(self):
-        plotWidget = pg.PlotWidget(title="EEG Activity")
-        plotWidget.setBackground('w')
-        plotWidget.getPlotItem().showGrid(True, True)
-        self.plotDataItem = plotWidget.plot(pen='b')
-        self.updateEegPlot()
-        
-        return plotWidget
+    ################################################################################
+    #############################  Plots and Other Layout ##########################
+    ################################################################################
 
-    def createAudioPlotWidget(self):
-        audioPlotWidget = pg.PlotWidget(title="Audio Visualizer")
-        audioPlotWidget.setBackground('g')
-        audioPlotWidget.getPlotItem().showGrid(True, True)
-        self.audioPlotDataItem = audioPlotWidget.plot(pen='red')
+    def setupPlotsAndOtherLayout(self):
+        mainlayout = QVBoxLayout()
         
-        return audioPlotWidget
 
-    def createBottomLayout(self):
-        bottomLayout = QVBoxLayout()
+        plotsLayoutWidget = self.setupPlotsLayout()
+        playAndStopButtonsLayoutWidget = self.setupPlayAndStopButtonsLayout()
+        mappingInformationLayoutWidget = self.setupMappingInformationLayout()
+        bidsInfoLayoutWidget = self.setupBIDSInfoLayout()
+        saveNextPreviousDiscardLayoutWidget = self.setupSaveNextPreviousDiscardLayout()
         
-        audioControlLayout = self.createAudioControlLayout()
-        infoLayout = self.createInfoLayout()
-        navigationLayout = self.createNavigationLayout()
-        bidsInfoLayout = self.createBIDSInfoLayout()
-        
-        bottomLayout.addLayout(audioControlLayout)
-        bottomLayout.addLayout(infoLayout)
-        bottomLayout.addStretch()
-        bottomLayout.addLayout(bidsInfoLayout)
-        bottomLayout.addLayout(navigationLayout)
-        
-        return bottomLayout
+        mainlayout.addWidget(plotsLayoutWidget)
+        mainlayout.addWidget(playAndStopButtonsLayoutWidget)
+        mainlayout.addWidget(mappingInformationLayoutWidget)
+        mainlayout.addWidget(bidsInfoLayoutWidget)
+        mainlayout.addWidget(saveNextPreviousDiscardLayoutWidget)
+       
 
-    def createAudioControlLayout(self):
-        audioControlLayout = QHBoxLayout()
-        
-        self.playButton = QPushButton("Play")
-        self.playButton.setStyleSheet(buttonStyle)
-        self.stopButton = QPushButton("Stop")
-        self.stopButton.setStyleSheet(buttonStyle)
-        
-        self.playButton.clicked.connect(self.playAudio)
-        self.stopButton.clicked.connect(self.stopAudio)
-        
-        audioControlLayout.addWidget(self.playButton)
-        audioControlLayout.addWidget(self.stopButton)
-        
-        return audioControlLayout
+        return mainlayout
+    
+    def setupBIDSInfoLayout(self):
+        rowLayout = QHBoxLayout()
+        rowLayoWidget = wrapLayoutInWidget(rowLayout)
 
-    def createInfoLayout(self):
+
+        subjectID = createQLabel('PatientID: ')
+        self.subjectID = createQLineEdit('', enable=False)
+        sessionID = createQLabel('Session No.')
+        self.sessionID = createQLineEdit('', enable=False)
+
+        rowLayout.addWidget(subjectID)
+        rowLayout.addWidget(self.subjectID)
+        rowLayout.addWidget(sessionID)
+        rowLayout.addWidget(self.sessionID)
+
+        return rowLayoWidget
+
+    def setupSaveNextPreviousDiscardLayout(self):
+        rowLayout = QHBoxLayout()
+        rowLayoWidget = wrapLayoutInWidget(rowLayout)
+
+        self.previousButton = createQPushButton('Previous')
+        self.nextButton = createQPushButton('Next')
+        self.saveButton = createQPushButton('Save')
+        self.discardButton = createQPushButton('Discard')
+
+        rowLayout.addWidget(self.previousButton)
+        rowLayout.addWidget(self.nextButton)
+        rowLayout.addWidget(self.saveButton)
+        rowLayout.addWidget(self.discardButton)
+     
+        return rowLayoWidget
+    
+    def setupMappingInformationLayout(self):
         self.labels = ["Action:", "Word:", "StartTime(EEG):", "EndTime(EEG):", "StartIndex(EEG):", "EndIndex(EEG):", "StartIndex(Audio):", "Duration:", "StartTime(Audio):"]
-        self.infoLayout = QVBoxLayout()
+        self.mappingInfoLayout = QVBoxLayout()
+        self.mappingInfoLayoutWidget = wrapLayoutInWidget(self.mappingInfoLayout)
         count = 0
         
         for i in range(3):
@@ -185,116 +243,286 @@ class EEGAudioApp(QMainWindow):
             for j in range(3):
                 label = QLabel(self.labels[count])
                 count += 1
-                textBox = QLineEdit()
+                textBox = createQLineEdit('')
                 hbox1.addWidget(label)
                 hbox2.addWidget(textBox)
                 
-            self.infoLayout.addLayout(hbox1)
-            self.infoLayout.addLayout(hbox2)
+            self.mappingInfoLayout.addLayout(hbox1)
+            self.mappingInfoLayout.addLayout(hbox2)
         
-        return self.infoLayout
+        return self.mappingInfoLayoutWidget
 
-    def createNavigationLayout(self):
-        buttonLayout = QHBoxLayout()
+    def setupMarkerWordEEGStartTimeWidget(self):
+        rowLayout = QVBoxLayout()
+        rowLayoWidget = wrapLayoutInWidget(rowLayout, layoutStyle=layoutStyleItems)
+
+        columnLayout = QHBoxLayout()
+        columnLayoutWidget = wrapLayoutInWidget(columnLayout, layoutStyle=layoutStyleItems)
+
+        markerLabel = createQLabel('Marker')
+        wordLabel = createQLabel('Word')
+        eegStartTime = createQLabel('Start Time EEG')
+
+        columnLayout.addWidget(markerLabel)
+        columnLayout.addWidget(wordLabel)
+        columnLayout.addWidget(eegStartTime)
         
-        self.prevButton = QPushButton("Previous")
-        self.prevButton.setStyleSheet(buttonStyle)
-        self.nextButton = QPushButton("Next")
-        self.nextButton.setStyleSheet(buttonStyle)
-        self.discardButton = QPushButton("Discard")
-        self.discardButton.setStyleSheet(buttonStyle)
-        self.saveButton = QPushButton("Save")
-        self.saveButton.setStyleSheet(buttonStyle)
+        rowLayout.addWidget(columnLayoutWidget)
+
+        columnLayout = QHBoxLayout()
+        columnLayoutWidget = wrapLayoutInWidget(columnLayout, layoutStyle=layoutStyleItems)
+
+        self.markerText = createQLineEdit('')
+        self.WordText = createQLineEdit('')
+        self.eegStartTimeText = createQLineEdit('')
+
+        columnLayout.addWidget(self.markerText)
+        columnLayout.addWidget(self.WordText)
+        columnLayout.addWidget(self.eegStartTimeText)
+
+        rowLayout.addWidget(columnLayoutWidget)
+       
+        return rowLayoWidget
+
+    ################################################################################
+    ################################  Plots  Layout ################################
+    ################################################################################
+
+    def setupPlotsLayout(self):
+        plotsLayout = QHBoxLayout()
+        plotsLayoutWidget = wrapLayoutInWidget(plotsLayout)
+
+        self.eegPlotWidget = self.setupEEGPlotWidget()
+        self.audioPlotWidget = self.setupAudioPlotWidget()
+
+        plotsLayout.addWidget(self.eegPlotWidget)
+        plotsLayout.addWidget(self.audioPlotWidget)
+
+        return plotsLayoutWidget
+    
+    def setupAudioPlotWidget(self):
+        audioPlotWidget = pg.PlotWidget(title="Audio Visualizer")
+        audioPlotWidget.setBackground('g')
+        audioPlotWidget.getPlotItem().showGrid(True, True)
+        self.audioPlotDataItem = audioPlotWidget.plot(pen='red')
         
-        self.prevButton.clicked.connect(self.prevAction)
-        self.nextButton.clicked.connect(self.nextAction)
-        self.discardButton.clicked.connect(self.discardAction)
-        self.saveButton.clicked.connect(self.saveAction)
+        return audioPlotWidget
+
+    def setupEEGPlotWidget(self):
+        eegplotWidget = pg.PlotWidget(title="EEG Activity")
+        eegplotWidget.setBackground('w')
+        eegplotWidget.getPlotItem().showGrid(True, True)
+        self.plotDataItem = eegplotWidget.plot(pen='b')
         
-        buttonLayout.addWidget(self.prevButton)
-        buttonLayout.addWidget(self.nextButton)
-        buttonLayout.addWidget(self.discardButton)
-        buttonLayout.addWidget(self.saveButton)
+        return eegplotWidget
+
+    
+    ################################################################################
+    ########################  Play and Stop Audio  Layout ##########################
+    ################################################################################
+
+    def setupPlayAndStopButtonsLayout(self):
+        rowLayout = QHBoxLayout()
+        rowLayoutWidget = wrapLayoutInWidget(rowLayout)
+
+        self.playAudioButton = createQPushButton('Play')
+        self.stopAudioButton = createQPushButton('Stop')
+
+        rowLayout.addWidget(self.playAudioButton)
+        rowLayout.addWidget(self.stopAudioButton)
+
+        return rowLayoutWidget
+    
+    
+
+    def setMappingTableData(self):
+        data = self.eegAudioData.mappingEegEventsWithMarkers
+        nRows = len(data)
+        self.mappingTableWidget.setRowCount(nRows)
+
+        for rowIndex in range(nRows):
+            for colIndex in range(9):
+                self.mappingTableWidget.setItem(rowIndex, colIndex, QTableWidgetItem(str(data[rowIndex][colIndex])))
+
         
-        return buttonLayout
+        self.changeRowColors()
+    
+    def mappingDataCellClicked(self, row):
+        if row != 0:
+            self.previousMappingRow = row - 1
+        self.currentMappingRow = row
+        rowData = []
+        for col in range(self.mappingTableWidget.columnCount()):
+            item = self.mappingTableWidget.item(row, col)
+            if item is not None:
+                rowData.append(item.text())
+            
 
-    def createBIDSInfoLayout(self):
+        self.updateMappingInfoLayout(rowData)
+
+    def updateMappingInfoLayout(self, rowData):
+        rowData[2] = str(np.array(float(rowData[2])).astype('datetime64[s]'))
+        rowData[3] = str(np.array(float(rowData[3])).astype('datetime64[s]'))
+        rowData[8] = str(np.array(float(rowData[8])).astype('datetime64[s]'))
         
-        bidsLayout = QVBoxLayout()
+        widgets = extractWidgets(self.mappingInfoLayout)
+        count = 0
+        for widget in widgets:
+            if isinstance(widget, QLineEdit):
+                if count == 0:
+                    self.currentTask = 0
+                widget.setText(rowData[count])
+                count += 1
+        
 
-        patientIDLabel = QLabel('Patient ID')
-        #patientIDLabel.setStyleSheet(la)
-        self.patientIDText = QLineEdit()
-        sessionIDLabel = QLabel('Session No')
-        self.sessionIDText = QLineEdit()
+    def nextMappingInfoLayout(self):
+        rowData = extractRowDataFromTable(self.mappingTableWidget, self.currentMappingRow +1)         
+        self.currentMappingRow += 1
+        self.updateMappingInfoLayout(rowData)
 
-        bidsLayout.addWidget(patientIDLabel)
-        bidsLayout.addWidget(self.patientIDText)
-        bidsLayout.addWidget(sessionIDLabel)
-        bidsLayout.addChildWidget(self.sessionIDText)
+    def previousMappingInfoLayout(self):
+        if self.currentMappingRow != 0:
+            rowData = extractRowDataFromTable(self.mappingTableWidget, self.currentMappingRow -1)     
+            self.currentMappingRow -= 1
+            self.updateMappingInfoLayout(rowData)
 
-        return bidsLayout
+    def playAudioFile(self):
+        os.makedirs(config.audioPlayDir, exist_ok=True)
+        self.extractAudioForPlay()
 
-    def closeEvent(self, event):
-        self.aboutToClose.emit()
-        event.accept()
+    def initialiseMappingInfo(self):
+        rowData = extractRowDataFromTable(self.mappingTableWidget, self.currentMappingRow)
+        self.audioStartIndex = int(rowData[6])
+        self.marker = rowData[0]
+        self.word = rowData[1]
+        self.eegStartTime = rowData[2]
+        self.eegEndTime = rowData[3]
+        self.eegStartIndex = int(rowData[4])
+        self.eegEndIndex = int(rowData[5])
+        self.audioStartIndex = int(rowData[6])
+        self.eegDuration = int(rowData[7])
+        self.audioStartTime = rowData[8]
+        
+    def extractAudioForPlay(self):
+        self.initialiseMappingInfo()
+        self.audioEndIndex = self.audioStartIndex + int((self.eegDuration / self.eegSamplingRate) * self.audioSamplingRate)
+        self.audioSampleData = self.eegAudioData.audioData.audio[self.audioStartIndex: self.audioEndIndex].reshape(-1, 1)
+        name = f'{self.audioStartIndex}.wav'
+        filePathWithName = Path(config.audioPlayDir, name)
+        print(filePathWithName)
+        if not os.path.exists(filePathWithName):
+            write(filePathWithName, int(self.eegAudioData.audioData.samplingFrequency), self.audioSampleData)
+        self.audioData, self.sampleRate = sf.read(filePathWithName, dtype='int16')
+        self.audioIndex = 0
+        mediaContent = QMediaContent(QUrl.fromLocalFile(str(filePathWithName)))
+        self.mediaPlayer.setMedia(mediaContent)
+        self.mediaPlayer.play()
+        self.timer.start(30)
 
-    def updateEegPlot(self):
-        eegData = np.random.normal(size=1000)
-        self.plotDataItem.setData(eegData)
+    def stopAudioButtonFunction(self):
+        self.mediaPlayer.stop()
+        self.timer.stop()
 
     def updateAudioPlot(self):
-        if self.audioData is not None:
+        if self.audioSampleData is not None:
             chunkSize = 1024
             endIndex = self.audioIndex + chunkSize
-            if endIndex >= len(self.audioData):
-                endIndex = len(self.audioData)
+            if endIndex >= len(self.audioSampleData):
+                endIndex = len(self.audioSampleData)
                 self.timer.stop()
             dataChunk = self.audioData[self.audioIndex:endIndex]
             self.audioPlotDataItem.setData(dataChunk)
             self.audioIndex = endIndex
 
-    def playAudio(self):
-        self.audioSampleRate = self.eegAudioData.audioData.samplingFrequency
-        if not os.path.exists(self.audioFileNameToSavePathWav):
-            write(self.audioFileNameToSavePathWav, int(self.audioSampleRate), self.audioSample)
-        self.audioData, self.sampleRate = sf.read(self.audioFileNameToSavePathWav, dtype='int16')
-        self.audioIndex = 0
-        mediaContent = QMediaContent(QUrl.fromLocalFile(str(self.audioFileNameToSavePathWav)))
-        self.mediaPlayer.setMedia(mediaContent)
-        self.mediaPlayer.play()
-        self.timer.start(30)
+    def extractDataForCurrentRun(self):
+        self.initialiseMappingInfo()
+        self.audioEndIndex = self.audioStartIndex + int((self.eegDuration / self.eegSamplingRate) * self.audioSamplingRate)
+        self.audioSampleData = self.eegAudioData.audioData.audio[self.audioStartIndex: self.audioEndIndex].reshape(-1, 1)
+        self.eegSampleData = self.eegAudioData.eegData.rawData.copy().crop(
+            tmin = self.eegStartIndex/self.eegSamplingRate,
+            tmax = self.eegEndIndex/self.eegSamplingRate
+        )
+        self.channelNames = self.eegAudioData.eegData.channelNames
 
-    def stopAudio(self):
-        self.mediaPlayer.stop()
-        self.timer.stop()
-
-    def prevAction(self):
-        currentRow = self.listWidget.currentRow()
-        if currentRow > 0:
-            self.listWidget.setCurrentRow(currentRow - 1)
-            self.updateInfoFromListItem()
-
-    def nextAction(self):
-        currentRow = self.listWidget.currentRow()
-        if currentRow < self.listWidget.count() - 1:
-            self.listWidget.setCurrentRow(currentRow + 1)
-            self.updateInfoFromListItem()
-
-    def discardAction(self):
-        currentRow = self.listWidget.currentRow()
-        if currentRow < self.listWidget.count() - 1:
-            self.listWidget.setCurrentRow(currentRow + 1)
-            self.updateInfoFromListItem()
-
-    def saveAction(self):
-        
+    def saveFilesInBIDSFormat(self):
         self.saveMessageBox = self.showWaitingMessage('Saving files')
         self.saveMessageBox.setWindowTitle("Saving")
+        self.setupDirsForSavingFiles()
+        self.setupFilePathsForSavingFilesBIDSFormat()
+        self.extractDataForCurrentRun()
         self.saveWorker = SaveWorker(self)
         self.saveWorker.finished.connect(self.onSaveFinished)
         self.saveWorker.error.connect(self.onSaveError)
         self.saveWorker.start()
+        
+
+    def setupDirsForSavingFiles(self):
+        if not self.checkDirectorySetup:
+            if self.subjectID.text() != '' and self.sessionID.text() != '':
+                self.checkDirectorySetup = True
+                self.subjectDirName = f'sub-{self.subjectID.text()}'
+                self.SessionDirName = f'ses-{self.sessionID.text()}'
+                self.subjectAndSessionDir = Path(config.bidsDir, self.subjectDirName, self.SessionDirName)
+                print(self.subjectAndSessionDir)
+                os.makedirs(self.subjectAndSessionDir, exist_ok=True)
+                self.subjectAndSessionDirName = f'{self.subjectDirName}_{self.SessionDirName}'
+
+                print(self.subjectDirName, self.SessionDirName)
+                print(self.subjectAndSessionDir, self.subjectAndSessionDirName)
+            else:
+                QMessageBox.critical(self, "Error", f"Enter Subject ID and Session ID")
+
+    def setupFilePathsForSavingFilesBIDSFormat(self):
+        if self.checkDirectorySetup:
+            rowData = extractRowDataFromTable(self.mappingTableWidget, self.currentMappingRow)
+            word = rowData[1]
+            backgroundColor = getRowBackgroundColorFromTable(self.mappingTableWidget, self.currentMappingRow)
+            if backgroundColor == self.backgroundColorPictureNamingSayingBlock:
+                self.currentBlock = 'PictureNaming-Saying'
+            if backgroundColor == self.backgroundColorPictureNamingImaginingBlock:
+                self.currentBlock = 'PictureNaming-Thinking'
+
+            self.filePathsUntillBlock = f'{self.subjectAndSessionDirName}_task-{self.currentBlock}'
+
+            if self.currentBlock == 'PictureNaming-Saying':
+                if word not in self.runCountPictureNamingSaying:
+                    self.runCountPictureNamingSaying[word] = 1
+                else:
+                    self.runCountPictureNamingSaying[word] += 1
+                self.fullFilePathBidsFormat = f'{self.filePathsUntillBlock}_word-{word}_run-{self.runCountPictureNamingSaying[word]}'
+
+            if self.currentBlock == 'PictureNaming-Thinking':
+                if word not in self.runCountPictureNamingImagning:
+                    self.runCountPictureNamingImagning[word] = 1
+                else:
+                    self.runCountPictureNamingImagning[word] += 1
+                self.fullFilePathBidsFormat = f'{self.filePathsUntillBlock}_word-{word}_run-{self.runCountPictureNamingImagning[word]}'
+            print(self.fullFilePathBidsFormat)
+    
+    def changeRowColors(self):
+        color = "#ffff00"
+        for row in range(self.mappingTableWidget.rowCount()):
+            item = self.mappingTableWidget.item(row, 0) 
+            value = item.text()  
+            if value == 'StartBlockThinking':
+                color = self.backgroundColorPictureNamingImaginingBlock
+            if value == 'StartBlockSaying':
+                color = self.backgroundColorPictureNamingSayingBlock
+          
+            for col in range(self.mappingTableWidget.columnCount()):
+                item = self.mappingTableWidget.item(row, col)
+                if item is not None:
+                    item.setBackground(QColor(color))
+
+
+    
+    def updateEegPlot(self):
+        eegData = np.random.normal(size=1000)
+        self.plotDataItem.setData(eegData)
+
+    def closeEvent(self, event):
+        self.aboutToClose.emit()
+        event.accept()
 
     def onSaveError(self, errorMessage):
         self.saveMessageBox.accept()
@@ -312,39 +540,3 @@ class EEGAudioApp(QMainWindow):
     
     def onSaveFinished(self):
         self.saveMessageBox.accept()
-
-    def updateInfoFromListItem(self):
-        selectedItemText = self.listWidget.currentItem().text()
-        infoParts = selectedItemText.split(",")
-
-        self.marker = infoParts[0]
-        self.word = infoParts[1]
-        self.eegStartIndex = int(infoParts[4])
-        self.eegEndIndex = int(infoParts[5])
-        self.duration = int(infoParts[7])
-        self.audioStartIndex = int(infoParts[6])
-        self.audioEndIndex = self.audioStartIndex + int(
-            (self.duration / int(self.eegAudioData.eegData.samplingFrequency)) * self.eegAudioData.audioData.samplingFrequency)
-
-        self.audioSample = self.eegAudioData.audioData.audio[self.audioStartIndex:self.audioEndIndex]
-        self.audioSample = self.audioSample.reshape(-1)
-        self.eegSample = self.eegAudioData.eegData.rawData[:self.eegStartIndex:self.eegEndIndex]
-
-        self.channelNames = self.eegAudioData.eegData.channelNames
-        self.eegFileNameToSavePath = Path(config.outputDirEEG, f'{self.marker}_{self.word}_{self.eegStartIndex}.fif')
-        self.audioFileNameToSavePath = Path(config.outputDirAudio, f'{self.marker}_{self.word}_{self.eegStartIndex}.npy')
-        self.audioFileNameToSavePathWav = Path(config.outputDirAudio, f'{self.marker}_{self.word}_{self.eegStartIndex}.wav')
-        self.metaDataFileNameToSavePath = Path(config.outputDirMetadata, f'{self.marker}_{self.word}.json')
-        
-        infoParts[2] = str(np.array(float(infoParts[2])).astype('datetime64[s]'))
-        infoParts[3] = str(np.array(float(infoParts[3])).astype('datetime64[s]'))
-        infoParts[8] = str(np.array(float(infoParts[8])).astype('datetime64[s]'))
-        
-        
-        widgets = extractWidgets(self.infoLayout)
-        count = 0
-        for widget in widgets:
-            if isinstance(widget, QLineEdit):
-                widget.setText(infoParts[count])
-                count += 1
-

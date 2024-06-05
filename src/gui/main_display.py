@@ -1,16 +1,17 @@
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout
-from PyQt5.QtWidgets import QVBoxLayout, QLabel, QPushButton, QComboBox, QFileDialog
-from PyQt5.QtWidgets import QMessageBox,  QLineEdit,  QListWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QHeaderView
+from PyQt5.QtWidgets import QVBoxLayout, QLabel, QTableWidget,QTableWidgetItem, QFileDialog, QMessageBox
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QIcon,  QPixmap
-
-from gui.utils import textBoxStyle, labelStyle, buttonStyle, comboBoxStyle, layoutStyle
-from gui.utils import getFileNameFromPath, convertEegEventsToList, convertMarkerEventsToList
+from PyQt5.QtGui import QIcon
+import pyqtgraph as pg
+import numpy as np
+import config
+from gui.utils import getFileNameFromPath, createQListWidget, setTextProperty
+from gui.utils import  wrapLayoutInWidget, createQComboBox ,createQLabel, createQPushButton
+from gui.utils import createQLineEdit,layoutStyle
 from classes.eeg import EegData
 from classes.audio import AudioData
 from classes.eeg_audio import EegAudioData
-from gui.mapping_display3 import EEGAudioApp
-import config as config
+from gui.mapping_display import MappingWindow
 
 class LoadEegThread(QThread):
     finished = pyqtSignal(object)
@@ -47,361 +48,338 @@ class LoadAudioThread(QThread):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        
         self.eegData = None
         self.audioData = None
-        self.mappingDisplay = None
+        self.edfFilePath = None
+        self.xdfFilePath = None
 
         self.setWindowTitle('EEG_AUDIO_Anotator')
-        self.setGeometry(500, 300, 1200, 300)
-        self.setWindowIcon(QIcon(config.windowIconPath))  
+        self.setGeometry(500, 300, 1300, 300)
+        self.setWindowIcon(QIcon(config.windowIconPath)) 
         self.setStyleSheet("background-color: #f0f0f0;")
-
-        self.backgroundLabel = QLabel(self)
-        self.backgroundLabel.setGeometry(0, 0, self.width(), self.height())
-        pixmap = QPixmap(config.backgroundImagePath)
-
-        self.backgroundLabel.setPixmap(pixmap)
-        self.backgroundLabel.setScaledContents(True)
-        self.backgroundLabel.setAlignment(Qt.AlignCenter)
-
+        
         centralWidget = QWidget()
         self.setCentralWidget(centralWidget)
         self.mainLayout = QHBoxLayout()
         centralWidget.setLayout(self.mainLayout)
 
-        self.setupLeftLayout()
-        self.setupRightLayout()
+        eegLayout, audioLayout = self.setupLayouts()
+
+        self.mainLayout.addLayout(eegLayout, 20)  
+        self.mainLayout.addLayout(audioLayout, 19)
+
+    def setupLayouts(self):
+        eegLayout = self.setupEEGLayout()
+        audioLayout = self.setupAudioLayout()
+
         self.connectSignals()
+        return eegLayout, audioLayout
+    
+    def connectSignals(self):
+        self.connectEEGSignals()
+        self.connectAudioSignals()
 
-    def setupLeftLayout(self):
-        self.leftLayout = QVBoxLayout()
-        self.leftLayoutWidget = self.wrapLayoutInWidget(self.leftLayout)
+    def connectEEGSignals(self):
+        self.eegSelectFileButton.clicked.connect(self.browseEEGFile)
+        self.eegLoadFileButton.clicked.connect(self.loadEdfFile)
+        self.eegAddChannelButton.clicked.connect(self.eegAddChannelToSelectedChannelsList)
+        self.eegRemoveChannelButton.clicked.connect(self.eegRemoveChannelFromSelectedChannelsList)
+        self.eegRemoveAllChannelsButton.clicked.connect(self.eegRemoveAllChannelsFromSelectedList)
+        self.eegAddAllChannelsButton.clicked.connect(self.eegAddAllChannelsToSelectedChannelsList)
+        self.eegVisualizeSelectedChannelsButton.clicked.connect(self.eegVisualizeSelectedChannels)
+    
+    def connectAudioSignals(self):
+        self.audioSelectFileButton.clicked.connect(self.browseXDFFile)
+        self.audioLoadFileButton.clicked.connect(self.loadXDFFile)
+        self.eegAndAudioMappingButton.clicked.connect(self.loadMappingWindow)
 
-        self.createFileInformationSectionForEEG()
-        self.createEventInformationSectionForEEG()
-        self.createChannelSelectionSectionForEEG()
-        self.createVisualizationButtonForEEG()
+    
 
-        self.mainLayout.addWidget(self.leftLayoutWidget)
 
-    def createFileInformationSectionForEEG(self):
-        headerLabel = QLabel('<center><b><font color="#8B0000" size="5"><u> EEG (*.edf) FILE INFORMATION<u></font></b></center>')
-        self.leftLayout.addWidget(headerLabel)
+    ################################################################################
+    ############################## EEG Layout Functions ############################
+    ################################################################################
 
-        #***********************************ROW 2***********************************
-        eegFileNameLabel = QLabel('EEG (.edf) File :')
-        eegFileNameLabel.setStyleSheet(labelStyle)
-        self.eegFileNameTextbox = QLineEdit('Filename will appear here!!!')
-        self.eegFileNameTextbox.setReadOnly(True)
-        self.eegFileNameTextbox.setStyleSheet(textBoxStyle)
-        self.eegSelectFileButton = QPushButton('Select File')
-        self.eegSelectFileButton.setStyleSheet(buttonStyle)
-        self.eegLoadFileButton = QPushButton('Load File')
-        self.eegLoadFileButton.setStyleSheet(buttonStyle)
 
+    def setupEEGLayout(self):
+        mainLayout = QVBoxLayout()
+        headerWidget = self.setupHeaderLayout(title='EEG (.edf) File Information')
+
+        fileLoadingWidget = self.setupEEGFileLoadingLayout()
+        fileInfoSFreqAndDurationWidget = self.setupEEGSFreqAndDurationLayout()
+        goodAndBadChannels = self.setupGoodAndBadChannelsLayout()
+        startAndEndTime = self.setupEEGStartAndEndTimeLayout()
+        nChannelssAndInterruptionCheck = self.setupNoChannelssAndInterupptionsLayout() 
+        self.eegEventsTable = self.setupEEGEventsLayout()
+        visualizeEEG = self.visualiseEEGLayout()
+        self.eegVisualizeSelectedChannelsButton = createQPushButton('Visualize Selected Channels')
+
+
+        mainLayout.addWidget(headerWidget)
+        mainLayout.addWidget(fileLoadingWidget)
+        mainLayout.addWidget(fileInfoSFreqAndDurationWidget)
+        mainLayout.addWidget(goodAndBadChannels)
+        mainLayout.addWidget(startAndEndTime)
+        mainLayout.addWidget(nChannelssAndInterruptionCheck)
+        mainLayout.addWidget(self.eegEventsTable)
+        mainLayout.addWidget(visualizeEEG)
+        mainLayout.addWidget(self.eegVisualizeSelectedChannelsButton)
+
+        return mainLayout
+    
+    def visualiseEEGLayout(self):
+        columnLayout = QHBoxLayout()
+        columnLayoutWidget = wrapLayoutInWidget(columnLayout)
+
+        self.eegAvailableChannelsList = createQListWidget()
+        buttonsWidget = self.setupButtonsForVisualation()
+        self.eegSelectedChannelsList = createQListWidget()
+        
+        columnLayout.addWidget(self.eegAvailableChannelsList)
+        columnLayout.addWidget(buttonsWidget)
+        columnLayout.addWidget(self.eegSelectedChannelsList)
+
+        return columnLayoutWidget
+    
+    def setupButtonsForVisualation(self):
+        rowLayout = QVBoxLayout()
+        rowLayoutWidget = wrapLayoutInWidget(rowLayout)
+
+        self.eegAddChannelButton = createQPushButton('Add >>')
+        self.eegRemoveChannelButton = createQPushButton('Remove <<')
+        self.eegAddAllChannelsButton = createQPushButton('Add All >>')
+        self.eegRemoveAllChannelsButton = createQPushButton('Remove All <<')
+
+        rowLayout.addWidget(self.eegAddChannelButton)
+        rowLayout.addWidget(self.eegRemoveChannelButton)
+        rowLayout.addWidget(self.eegAddAllChannelsButton)
+        rowLayout.addWidget(self.eegRemoveAllChannelsButton)
+
+        return rowLayoutWidget
+
+    def setupEEGEventsLayout(self):
+        eegTableWidget = QTableWidget()
+        eegTableWidget.setStyleSheet(layoutStyle)
+        eegTableWidget.setRowCount(0)
+        eegTableWidget.setColumnCount(6)
+        headers = ["Action", "Start Time", "End Time", "Start Index", "End Index", "Duration"]
+        eegTableWidget.setHorizontalHeaderLabels(headers)
+        header = eegTableWidget.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+        eegTableWidget.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+
+
+        return eegTableWidget
+
+    def setupNoChannelssAndInterupptionsLayout(self):
         rowLayout = QHBoxLayout()
-        rowLayoutWidget = self.wrapLayoutInWidget(rowLayout)
+        rowLayoutWidget = wrapLayoutInWidget(rowLayout)
+
+        noChannelsLabel = createQLabel('No. Channels :')
+        self.eegNoChannelsText = createQLineEdit('')
+        interruptionsCheck = createQLabel('Interruptions Check ')
+        self.eegInterruptionsCheck = createQLineEdit('')
+
+        rowLayout.addWidget(noChannelsLabel)
+        rowLayout.addWidget(self.eegNoChannelsText)
+        rowLayout.addWidget(interruptionsCheck)
+        rowLayout.addWidget(self.eegInterruptionsCheck)
+
+        return rowLayoutWidget
+
+    def setupEEGStartAndEndTimeLayout(self):
+        rowLayout = QHBoxLayout()
+        rowLayoutWidget = wrapLayoutInWidget(rowLayout)
+
+        eegStartTimeLabel = createQLabel('Start Time :')
+        self.eegStartTimeText = createQLineEdit('')
+        eegEndTimeLabel = createQLabel('End Time: ')
+        self.eegEndTimeText = createQLineEdit('')
+
+        rowLayout.addWidget(eegStartTimeLabel)
+        rowLayout.addWidget(self.eegStartTimeText)
+        rowLayout.addWidget(eegEndTimeLabel)
+        rowLayout.addWidget(self.eegEndTimeText)
+
+        return rowLayoutWidget
+    
+    def setupGoodAndBadChannelsLayout(self):
+        rowLayout = QHBoxLayout()
+        rowLayoutWidget = wrapLayoutInWidget(rowLayout)
+        
+        self.eegGoodChannelsCombobox = createQComboBox('Good Channels')
+        self.eegBadChannelsCombobox = createQComboBox('Bad Channels')
+
+        rowLayout.addWidget(self.eegGoodChannelsCombobox)
+        rowLayout.addWidget(self.eegBadChannelsCombobox)
+
+        return rowLayoutWidget
+    
+    def setupEEGFileLoadingLayout(self):
+        rowLayout = QHBoxLayout()
+        rowLayoutWidget = wrapLayoutInWidget(rowLayout)
+
+        eegFileNameLabel = createQLabel('EEG (.edf) File')
+        self.eegFileNameTextbox = createQLineEdit('Filename will appear here!!!')
+        self.eegSelectFileButton = createQPushButton('Select File')
+        self.eegLoadFileButton = createQPushButton('Load File')
+
         rowLayout.addWidget(eegFileNameLabel)
         rowLayout.addWidget(self.eegFileNameTextbox)
         rowLayout.addWidget(self.eegSelectFileButton)
         rowLayout.addWidget(self.eegLoadFileButton)
-        self.leftLayout.addWidget(rowLayoutWidget)
 
-        #***********************************ROW 3***********************************
-        eegSamplingFreqLabel = QLabel('Sampling Frequency :')
-        eegSamplingFreqLabel.setStyleSheet(labelStyle)
-        self.eegSamplingFreqText = QLineEdit('')
-        self.eegSamplingFreqText.setStyleSheet(textBoxStyle)
-        self.eegSamplingFreqText.setReadOnly(True)
-        self.eegDurationLabel = QLabel('Duration: ')
-        self.eegDurationLabel.setStyleSheet(labelStyle)
-        self.eegDurationText = QLineEdit('')
-        self.eegDurationText.setStyleSheet(textBoxStyle)
-        self.eegDurationText.setReadOnly(True)
-
+        return rowLayoutWidget
+    
+    def setupEEGSFreqAndDurationLayout(self):
         rowLayout = QHBoxLayout()
-        rowLayoutWidget = self.wrapLayoutInWidget(rowLayout)
+        rowLayoutWidget = wrapLayoutInWidget(rowLayout)
+
+        eegSamplingFreqLabel = createQLabel('Sampling Frequency :')
+        self.eegSamplingFreqText = createQLineEdit('')
+        eegDurationLabel = createQLabel('Duration: ')
+        self.eegDurationText = createQLineEdit('')
+        
+
         rowLayout.addWidget(eegSamplingFreqLabel)
         rowLayout.addWidget(self.eegSamplingFreqText)
-        rowLayout.addWidget(self.eegDurationLabel)
+        rowLayout.addWidget(eegDurationLabel)
         rowLayout.addWidget(self.eegDurationText)
-        self.leftLayout.addWidget(rowLayoutWidget)
 
-        #***********************************ROW 4**********************************
-        eegNChannelsLabel = QLabel('No. Channels :')        
-        eegNChannelsLabel.setStyleSheet(labelStyle)
-        self.eegNChannelsText = QLineEdit('')
-        self.eegNChannelsText.setStyleSheet(textBoxStyle)
-        self.eegNChannelsText.setReadOnly(True)
-        self.eegNBadChannelsLabel = QLabel('No. bad channels')
-        self.eegNBadChannelsLabel.setStyleSheet(labelStyle)
-        self.eegNBadChannelsText = QLineEdit('')
-        self.eegNBadChannelsText.setStyleSheet(textBoxStyle)
-        self.eegNBadChannelsText.setReadOnly(True)
+        return rowLayoutWidget
 
-        rowLayout = QHBoxLayout()
-        rowLayoutWidget = self.wrapLayoutInWidget(rowLayout)
-        rowLayout.addWidget(eegNChannelsLabel)
-        rowLayout.addWidget(self.eegNChannelsText)
-        rowLayout.addWidget(self.eegNBadChannelsLabel)
-        rowLayout.addWidget(self.eegNBadChannelsText)
-        self.leftLayout.addWidget(rowLayoutWidget)
 
-        #***********************************ROW 5***********************************
-        eegStartTimeLabel = QLabel('Start Time :')
-        eegStartTimeLabel.setStyleSheet(labelStyle)
-        self.eegStartTimeText = QLineEdit('')
-        self.eegStartTimeText.setStyleSheet(textBoxStyle)
-        self.eegStartTimeText.setReadOnly(True)
-        self.eegEndTimeLabel = QLabel('End Time :')
-        self.eegEndTimeLabel.setStyleSheet(labelStyle)
-        self.eegEndTimeText = QLineEdit('')
-        self.eegEndTimeText.setStyleSheet(textBoxStyle)
-        self.eegEndTimeText.setReadOnly(True)
+    ################################################################################
+    ############################ Audio Layout Functions ############################
+    ################################################################################
 
-        rowLayout = QHBoxLayout()
-        rowLayoutWidget = self.wrapLayoutInWidget(rowLayout)
-        rowLayout.addWidget(eegStartTimeLabel)
-        rowLayout.addWidget(self.eegStartTimeText)
-        rowLayout.addWidget(self.eegEndTimeLabel)
-        rowLayout.addWidget(self.eegEndTimeText)
-        self.leftLayout.addWidget(rowLayoutWidget)
 
-        #***********************************ROW 5**********************************        
-        eegNTriggersLabel = QLabel('No. Triggers :')
-        eegNTriggersLabel.setStyleSheet(labelStyle)
-        self.eegNTriggersText = QLineEdit('')
-        self.eegNTriggersText.setStyleSheet(textBoxStyle)
-        self.eegNTriggersText.setReadOnly(True)
-        self.eegInterruptionLabel = QLabel('Interruptions Flag: ')
-        self.eegInterruptionLabel.setStyleSheet(labelStyle)
-        self.eegInterruptionsText = QLineEdit('')
-        self.eegInterruptionsText.setStyleSheet(textBoxStyle)
-        self.eegInterruptionsText.setReadOnly(True)
+    def setupAudioLayout(self):
+        mainLayout = QVBoxLayout()
+        headerWidget = self.setupHeaderLayout(title='AUDIO (.xdf) File Information')
+        fileLoadingWidget = self.setupAudioFileLoadingLayout()
+        audioSamplingFreqAndDurationWidget = self.setupAudioSamplingFreqAndDurationLayout()
+        audioStartAndEndTimeWidget = self.setupAudioStartAndEndTimeLayout()
+        markersStartAndEndTimeWidget = self.setupMarkersStartAndEndTimeLayout()
+        nMarkersAndDurationWidget = self.setupNoMarkersAndDurationLayout() 
+        self.audioAndMarkersBundledTable = self.setupAudioAnadMarkersBundledTableLayout()
+        self.eegAndAudioMappingButton = createQPushButton('Map Audio and EEG Data (Using Triggers & Time)')
 
-        rowLayout = QHBoxLayout()
-        rowLayoutWidget = self.wrapLayoutInWidget(rowLayout)
-        rowLayout.addWidget(eegNTriggersLabel)
-        rowLayout.addWidget(self.eegNTriggersText)
-        rowLayout.addWidget(self.eegInterruptionLabel)
-        rowLayout.addWidget(self.eegInterruptionsText)
-        self.leftLayout.addWidget(rowLayoutWidget)
+        mainLayout.addWidget(headerWidget)
+        mainLayout.addWidget(fileLoadingWidget)
+        mainLayout.addWidget(audioSamplingFreqAndDurationWidget)
+        mainLayout.addWidget(audioStartAndEndTimeWidget)
+        mainLayout.addWidget(markersStartAndEndTimeWidget)
+        mainLayout.addWidget(nMarkersAndDurationWidget)
+        mainLayout.addWidget(self.audioAndMarkersBundledTable)
+        mainLayout.addWidget(self.eegAndAudioMappingButton)
+
+        return mainLayout
     
-    def createEventInformationSectionForEEG(self):
-        #***********************************ROW 6**********************************
-        self.eegBadChannelsCBox = QComboBox()
-        self.eegBadChannelsCBox.addItem('Bad Channels')
-        self.eegBadChannelsCBox.setStyleSheet(comboBoxStyle)
-        self.eegEventsCBox = QComboBox()
-        self.eegEventsCBox.addItem('Event Name:       Start Time:   End Time:  Start Index:     End Index:   Duration')
-        self.eegEventsCBox.setStyleSheet(comboBoxStyle)
+    def setupAudioAnadMarkersBundledTableLayout(self):
+        audioMarkersBundledTable = QTableWidget()
+        audioMarkersBundledTable.setStyleSheet(layoutStyle)
+        audioMarkersBundledTable.setRowCount(0)
+        audioMarkersBundledTable.setColumnCount(4)
 
+        headers = ['Marker and Action', 'Word', 'Marker Time', 'Audio Time']
+        audioMarkersBundledTable.setHorizontalHeaderLabels(headers)
+
+        header = audioMarkersBundledTable.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+        audioMarkersBundledTable.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+
+        return audioMarkersBundledTable
+
+    def setupNoMarkersAndDurationLayout(self):
         rowLayout = QHBoxLayout()
-        rowLayout.addWidget(self.eegBadChannelsCBox)
-        rowLayout.addWidget(self.eegEventsCBox)
-        self.leftLayout.addLayout(rowLayout)
+        rowLayoutWidget = wrapLayoutInWidget(rowLayout)
 
-    def createChannelSelectionSectionForEEG(self):
-        #***********************************ROW 1**********************************
-        channelsLayout = QHBoxLayout()
+        nMarkersLabel = createQLabel('No. of Markers:')
+        self.audioNoMarkersText = createQLineEdit('')
+        markersDurationLabel = createQLabel('Markers ::: Duration :')
+        self.audioMarkersDurationText = createQLineEdit('')
 
-        self.eegChannelsAvailableList = QListWidget()
-        self.eegChannelsSelectedList = QListWidget()
+        rowLayout.addWidget(nMarkersLabel)
+        rowLayout.addWidget(self.audioNoMarkersText)
+        rowLayout.addWidget(markersDurationLabel)
+        rowLayout.addWidget(self.audioMarkersDurationText)
 
-        self.eegChannelAddBtn = QPushButton('Add >>')
-        self.eegChannelAddBtn.setStyleSheet(buttonStyle)
-        self.eegChannelRemoveBtn = QPushButton('<< Remove')
-        self.eegChannelRemoveBtn.setStyleSheet(buttonStyle)
-        self.eegChannelAddAllBtn = QPushButton('Add All >>')
-        self.eegChannelAddAllBtn.setStyleSheet(buttonStyle)
-        self.eegChannelRemoveAllBtn = QPushButton('<< Remove All')
-        self.eegChannelRemoveAllBtn.setStyleSheet(buttonStyle)
+        return rowLayoutWidget
 
-        buttonsLayout = QVBoxLayout()
-        buttonsLayout.addWidget(self.eegChannelAddBtn)
-        buttonsLayout.addWidget(self.eegChannelRemoveBtn)
-        buttonsLayout.addWidget(self.eegChannelAddAllBtn)
-        buttonsLayout.addWidget(self.eegChannelRemoveAllBtn)
-        buttonsLayout.addStretch()
-
-        channelsLayout.addWidget(self.eegChannelsAvailableList)
-        channelsLayout.addLayout(buttonsLayout)
-        channelsLayout.addWidget(self.eegChannelsSelectedList)
-
-        self.leftLayout.addLayout(channelsLayout)
-    
-    def createVisualizationButtonForEEG(self):
-        self.visualizeEEGBtn = QPushButton('Visualize selected channels')
-        self.visualizeEEGBtn.setStyleSheet(buttonStyle)
-        self.leftLayout.addWidget(self.visualizeEEGBtn)
-
-
-    def setupRightLayout(self):
-        self.rightLayout = QVBoxLayout()
-        self.rightLayoutWidget = self.wrapLayoutInWidget(self.rightLayout)
-
-        self.createFileInformationSectionForAudio()
-        self.createEventInformationSectionForAudio()
-        self.createMappingButtonForEEGAndAudio()
-
-        self.mainLayout.addWidget(self.rightLayoutWidget)     
-
-    def connectSignals(self):
-        self.eegSelectFileButton.clicked.connect(self.browseEegFile)
-        self.eegLoadFileButton.clicked.connect(self.loadEdfFile)
-        self.audioSelectFileButton.clicked.connect(self.browseXdfFile)
-        self.audioLoadFileButton.clicked.connect(self.loadXdfFile)
-
-        self.eegChannelAddBtn.clicked.connect(self.addItemToChannelSelectedList)
-        self.eegChannelAddAllBtn.clicked.connect(self.addAllItemsToChannelSelected)
-        self.eegChannelRemoveBtn.clicked.connect(self.removeItemFromChannelSelected)
-        self.eegChannelRemoveAllBtn.clicked.connect(self.removeAllItemsFromChannelSelected)
-        self.visualizeEEGBtn.clicked.connect(self.visualizeEegChannels)
-        self.mappingButtonForEEGAndAudio.clicked.connect(self.mapEegAndAudioBasedOnTriggersAndTime)
-    
-
-
-    def createFileInformationSectionForAudio(self):
-        headerLabel = QLabel('<center><b><font color="#8B0000" size="5"><u> Audio (*.xdf) FILE INFORMATION<u></font></b></center>')
-        self.rightLayout.addWidget(headerLabel)
-
-        #***********************************ROW 2***********************************
-        self.audioFileNameLabel = QLabel('EEG (.edf) File :')
-        self.audioFileNameLabel.setStyleSheet(labelStyle)
-        self.audioFileNameTextbox = QLineEdit('Filename will appear here!!!')
-        self.audioFileNameTextbox.setReadOnly(True)
-        self.audioFileNameTextbox.setStyleSheet(textBoxStyle)
-        self.audioSelectFileButton = QPushButton('Select File')
-        self.audioSelectFileButton.setStyleSheet(buttonStyle)
-        self.audioLoadFileButton = QPushButton('Load File')
-        self.audioLoadFileButton.setStyleSheet(buttonStyle)
-
+    def setupAudioFileLoadingLayout(self):
         rowLayout = QHBoxLayout()
-        rowLayoutWidget = self.wrapLayoutInWidget(rowLayout)
-        rowLayout.addWidget(self.audioFileNameLabel)
+        rowLayoutWidget = wrapLayoutInWidget(rowLayout)
+
+        audioFileNameLabel = createQLabel('Audio (.xdf) File')
+        self.audioFileNameTextbox = createQLineEdit('Filename will appear here!!!')
+        self.audioSelectFileButton = createQPushButton('Select File')
+        self.audioLoadFileButton = createQPushButton('Load File')
+
+        rowLayout.addWidget(audioFileNameLabel)
         rowLayout.addWidget(self.audioFileNameTextbox)
         rowLayout.addWidget(self.audioSelectFileButton)
         rowLayout.addWidget(self.audioLoadFileButton)
-        self.rightLayout.addWidget(rowLayoutWidget)
 
-        #***********************************ROW 3***********************************
-        self.audioSamplingFreqLabel = QLabel('Sampling Frequency :')
-        self.audioSamplingFreqLabel.setStyleSheet(labelStyle)
-        self.audioSamplingFreqText = QLineEdit('')
-        self.audioSamplingFreqText.setStyleSheet(textBoxStyle)
-        self.audioSamplingFreqText.setReadOnly(True)
-        self.audioDurationLabel = QLabel('Audio Duration: ')
-        self.audioDurationLabel.setStyleSheet(labelStyle)
-        self.audioDurationText = QLineEdit('')
-        self.audioDurationText.setStyleSheet(textBoxStyle)
-        self.audioDurationText.setReadOnly(True)
-
+        return rowLayoutWidget
+    
+    def setupAudioSamplingFreqAndDurationLayout(self):
         rowLayout = QHBoxLayout()
-        rowLayoutWidget = self.wrapLayoutInWidget(rowLayout)
-        rowLayout.addWidget(self.audioSamplingFreqLabel)
-        rowLayout.addWidget(self.audioSamplingFreqText)
-        rowLayout.addWidget(self.audioDurationLabel)
-        rowLayout.addWidget(self.audioDurationText)
-        self.rightLayout.addWidget(rowLayoutWidget)
+        rowLayoutWidget = wrapLayoutInWidget(rowLayout)
 
-        #***********************************ROW 4***********************************
-        self.audioStartTimeLabel = QLabel('Audio Start Time :')
-        self.audioStartTimeLabel.setStyleSheet(labelStyle)
-        self.audioStartTimeText = QLineEdit('')
-        self.audioStartTimeText.setStyleSheet(textBoxStyle)
-        self.audioStartTimeText.setReadOnly(True)
-        self.audioEndTimeLabel = QLabel('Audio End Time :')
-        self.audioEndTimeLabel.setStyleSheet(labelStyle)
-        self.audioEndTimeText = QLineEdit('')
-        self.audioEndTimeText.setStyleSheet(textBoxStyle)
-        self.audioEndTimeText.setReadOnly(True)
+        audioSamplingFreqLabel = createQLabel('Sampling Frequency :')
+        self.audioAudioSamplingFreqText = createQLineEdit('')
+        audioDurationLabel = createQLabel('Audio ::: Duration :')
+        self.audioAudioDurationText = createQLineEdit('')
 
+        rowLayout.addWidget(audioSamplingFreqLabel)
+        rowLayout.addWidget(self.audioAudioSamplingFreqText)
+        rowLayout.addWidget(audioDurationLabel)
+        rowLayout.addWidget(self.audioAudioDurationText)
+
+        return rowLayoutWidget
+
+    def setupAudioStartAndEndTimeLayout(self):
         rowLayout = QHBoxLayout()
-        rowLayoutWidget = self.wrapLayoutInWidget(rowLayout)
-        rowLayout.addWidget(self.audioStartTimeLabel)
-        rowLayout.addWidget(self.audioStartTimeText)
-        rowLayout.addWidget(self.audioEndTimeLabel)
-        rowLayout.addWidget(self.audioEndTimeText)
-        self.rightLayout.addWidget(rowLayoutWidget)
+        rowLayoutWidget = wrapLayoutInWidget(rowLayout)
+        
+        audioStartTimeLabel = createQLabel('Audio ::: Start Time: ')
+        self.audioAudioStartTimeText = createQLineEdit('')
+        audioEndTimeLabel  = createQLabel('Audio ::: End Time :')
+        self.audioAudioEndTimeText = createQLineEdit('')
 
-    def createEventInformationSectionForAudio(self):
+        rowLayout.addWidget(audioStartTimeLabel)
+        rowLayout.addWidget(self.audioAudioStartTimeText)
+        rowLayout.addWidget(audioEndTimeLabel)
+        rowLayout.addWidget(self.audioAudioEndTimeText)
 
-        self.audioNMarkersLabel = QLabel('No. Markers :')
-        self.audioNMarkersLabel.setStyleSheet(labelStyle)
-        self.audioNMarkersText = QLineEdit('')
-        self.audioNMarkersText.setStyleSheet(textBoxStyle)
-        self.audioNMarkersText.setReadOnly(True)
-        self.audioMarkersStartLabel = QLabel('Markers Start Time :')
-        self.audioMarkersStartLabel.setStyleSheet(labelStyle)
-        self.audioMarkersStartText = QLineEdit('')
-        self.audioMarkersStartText.setStyleSheet(textBoxStyle)
-        self.audioMarkersStartText.setReadOnly(True)
+        return rowLayoutWidget
 
+    def setupMarkersStartAndEndTimeLayout(self):
         rowLayout = QHBoxLayout()
-        rowLayoutWidget = self.wrapLayoutInWidget(rowLayout)
-        rowLayoutWidget.setStyleSheet(layoutStyle)
-        rowLayout.addWidget(self.audioNMarkersLabel)
-        rowLayout.addWidget(self.audioNMarkersText)
-        rowLayout.addWidget(self.audioMarkersStartLabel)
-        rowLayout.addWidget(self.audioMarkersStartText)
-        self.rightLayout.addWidget(rowLayoutWidget)
+        rowLayoutWidget = wrapLayoutInWidget(rowLayout)
+        
+        markersStartTimeLabel = createQLabel('Markers ::: Start Time: ')
+        self.audioMarkersStartTimeText = createQLineEdit('')
+        markersEndTimeLabel  = createQLabel('Markers ::: End Time :')
+        self.audioMarkersEndTimeText = createQLineEdit('')
 
-        #***********************************ROW 2***********************************
-
-        self.audioMarkersEndTimeLabel = QLabel('Markers End Time :')
-        self.audioMarkersEndTimeLabel.setStyleSheet(labelStyle)
-        self.audioMarkersEndTimeText = QLineEdit('')
-        self.audioMarkersEndTimeText.setStyleSheet(textBoxStyle)
-        self.audioMarkersEndTimeText.setReadOnly(True)
-        self.audioMarkersDurationLabel = QLabel('Markers Duration :')
-        self.audioMarkersDurationLabel.setStyleSheet(labelStyle)
-        self.audioMarkersDurationText = QLineEdit('')
-        self.audioMarkersDurationText.setStyleSheet(textBoxStyle)
-        self.audioMarkersDurationText.setReadOnly(True)
-
-        rowLayout = QHBoxLayout()
-        rowLayoutWidget = self.wrapLayoutInWidget(rowLayout)
-        rowLayout.addWidget(self.audioMarkersEndTimeLabel)
+        rowLayout.addWidget(markersStartTimeLabel)
+        rowLayout.addWidget(self.audioMarkersStartTimeText)
+        rowLayout.addWidget(markersEndTimeLabel)
         rowLayout.addWidget(self.audioMarkersEndTimeText)
-        rowLayout.addWidget(self.audioMarkersDurationLabel)
-        rowLayout.addWidget(self.audioMarkersDurationText)
-        self.rightLayout.addWidget(rowLayoutWidget)
 
-        #***********************************ROW 3**********************************
-        self.audioMarkersWithTimeAndAudioIndex = QComboBox()
-        self.audioMarkersWithTimeAndAudioIndex.setStyleSheet(comboBoxStyle)
-        self.audioMarkersWithTimeAndAudioIndex.addItem('Marker Name:   ::: Word:   ::: Time:  ::: Audio Index:')
+        return rowLayoutWidget
 
-        rowLayout = QHBoxLayout()
-        rowLayout.addWidget(self.audioMarkersWithTimeAndAudioIndex)
-        rowLayoutWidget = self.wrapLayoutInWidget(rowLayout)
-        rowLayoutWidget.setStyleSheet(layoutStyle)
-        self.rightLayout.addWidget(rowLayoutWidget)
 
-    def createMappingButtonForEEGAndAudio(self):
-        self.mappingButtonForEEGAndAudio = QPushButton('Map Audio and EEG')
-        self.mappingButtonForEEGAndAudio.setStyleSheet(buttonStyle)
-        self.rightLayout.addWidget(self.mappingButtonForEEGAndAudio)
- 
-    
-    def mapEegAndAudioBasedOnTriggersAndTime(self):
-        if self.eegData and self.audioData:
-            self.eegAudioData = EegAudioData(self.eegData, self.audioData)
-            self.hide()
-            self.mappingPageViewer = EEGAudioApp(self.eegAudioData)
-            self.mappingPageViewer.aboutToClose.connect(self.showMainWindow)
-            self.mappingPageViewer.show()
-    
-    def showMainWindow(self):
-        self.show()
-    
-    def wrapLayoutInWidget(self, layout):
-        widget = QWidget()
-        widget.setLayout(layout)
-        widget.setStyleSheet(layoutStyle)
-        return widget
 
-    def browseEegFile(self):
+
+    ################################################################################
+    ############################# EEG Related Functions ############################
+    ################################################################################
+
+    def browseEEGFile(self):
         fileDialog = QFileDialog()
         filePath, _ = fileDialog.getOpenFileName(self, "Open EDF File", "", "EDF Files (*.edf)")
         if filePath:
@@ -409,40 +387,6 @@ class MainWindow(QMainWindow):
             self.edfFileName = getFileNameFromPath(filePath)
             self.eegFileNameTextbox.setText(self.edfFileName)
             print(filePath)
-           
-    def browseXdfFile(self):
-        fileDialog = QFileDialog()
-        filePath, _ = fileDialog.getOpenFileName(self, "Open XDF File", "", "XDF Files (*.xdf)")
-        if filePath:
-            self.xdfFilePath = filePath
-            self.xdfFileName = getFileNameFromPath(filePath)
-            self.audioFileNameTextbox.setText(self.xdfFileName)
-    
-    def loadXdfFile(self):
-        if self.xdfFilePath:
-            self.waitingMessageBox = self.showWaitingMessage("Loading XDF data. Please wait...")
-            self.loadThread = LoadAudioThread(self.xdfFilePath)
-            self.loadThread.finished.connect(self.onLoadFinishedAudio)
-            self.loadThread.error.connect(self.onLoadError)
-            self.loadThread.start()
-
-    def updateAudioInfo(self):
-        self.audioSamplingFreqText.setText(str(self.audioData.samplingFrequency))
-        self.audioDurationText.setText(str(self.audioData.audioDuration))
-        self.audioStartTimeText.setText(str(self.audioData.audioStartTime))
-        self.audioEndTimeText.setText(str(self.audioData.audioEndTime))
-        self.audioNMarkersText.setText(str(self.audioData.nMarkers))
-        self.audioMarkersStartText.setText(str(self.audioData.markersStartTime))
-        self.audioMarkersEndTimeText.setText(str(self.audioData.audioEndTime))
-        self.audioMarkersDurationText.setText(str(self.audioData.markersDuration))
-        
-        makerEvents = convertMarkerEventsToList(self.audioData.markersWordsTimestampsAudioStartIndex)
-        self.audioMarkersWithTimeAndAudioIndex.addItems(makerEvents)
-
-    def onLoadFinishedAudio(self, audioData):
-        self.audioData = audioData
-        self.updateAudioInfo()
-        self.waitingMessageBox.accept()
 
     def loadEdfFile(self):
         if self.edfFilePath:
@@ -454,21 +398,136 @@ class MainWindow(QMainWindow):
 
     def onLoadFinishedEEG(self, eegData):
         self.eegData = eegData
-        self.updateEEGInfo()
+        self.updateEEGInformation()
+        self.waitingMessageBox.accept()    
+
+    def updateEEGInformation(self):
+        setTextProperty(self.eegSamplingFreqText, self.eegData.samplingFrequency)
+        setTextProperty(self.eegDurationText, self.eegData.duration)
+        setTextProperty(self.eegNoChannelsText, self.eegData.nChannels)
+        setTextProperty(self.eegInterruptionsCheck, self.eegData.interruptionsCheck)
+        setTextProperty(self.eegStartTimeText, self.eegData.startTime)
+        setTextProperty(self.eegEndTimeText, self.eegData.endTime)
+        self.eegGoodChannelsCombobox.addItems(self.eegData.goodChannels)
+        self.eegBadChannelsCombobox.addItems(self.eegData.badChannels)
+        self.eegAvailableChannelsList.addItems(self.eegData.channelNames)
+        self.eegAddDataToEventsTable()
+    
+    def eegRemoveAllChannelsFromSelectedList(self):
+        while self.eegSelectedChannelsList.count() > 0:
+            item = self.eegSelectedChannelsList.takeItem(0)
+            self.eegAvailableChannelsList.addItem(item.text())
+
+    def eegAddAllChannelsToSelectedChannelsList(self):
+        while self.eegAvailableChannelsList.count() > 0:
+            item = self.eegAvailableChannelsList.takeItem(0)
+            self.eegSelectedChannelsList.addItem(item.text())
+
+    def eegRemoveChannelFromSelectedChannelsList(self):
+        selectedChannels = self.eegSelectedChannelsList.selectedItems()
+        for channel in selectedChannels:
+            self.eegAvailableChannelsList.addItem(channel.text())
+            self.eegSelectedChannelsList.takeItem(self.eegSelectedChannelsList.row(channel))
+    
+    def eegAddChannelToSelectedChannelsList(self):
+        selectedChannels = self.eegAvailableChannelsList.selectedItems()
+        for channel in selectedChannels:
+            self.eegSelectedChannelsList.addItem(channel.text())
+            self.eegAvailableChannelsList.takeItem(self.eegAvailableChannelsList.row(channel))
+
+    def eegVisualizeSelectedChannels(self):
+        if self.eegData:
+            selectedChannels = [self.eegSelectedChannelsList.item(i).text() for i in range(self.eegSelectedChannelsList.count())]
+            plotData = self.eegData.rawData.copy()
+            eegDataSelectedChannels = plotData.pick(selectedChannels)
+            eegDataSelectedChannels.plot(duration=60, show_options=True)
+
+    def eegAddDataToEventsTable(self):
+        data = self.eegData.events
+        nRows = len(data)
+        self.eegEventsTable.setRowCount(nRows)
+        for rowIndex in range(nRows):
+            for colIndex in range(6):
+                self.eegEventsTable.setItem(rowIndex, colIndex, QTableWidgetItem(str(data[rowIndex][colIndex])))
+
+
+
+    ################################################################################
+    ############################ Audio Related Functions ###########################
+    ################################################################################
+    
+    def onLoadFinishedAudio(self, audioData):
+        self.audioData = audioData
+        self.updateAudioInformation()
         self.waitingMessageBox.accept()
 
-    def updateEEGInfo(self):
-        self.eegSamplingFreqText.setText(str(self.eegData.samplingFrequency))
-        self.eegDurationText.setText(str(self.eegData.duration))
-        self.eegNChannelsText.setText(str(self.eegData.nChannels))
-        self.eegNBadChannelsText.setText(str(len(self.eegData.badChannels)))
-        self.eegStartTimeText.setText(str(self.eegData.startTime))
-        self.eegEndTimeText.setText(str(self.eegData.endTime))
-        self.eegNTriggersText.setText(str(len(self.eegData.triggers)))
-        self.eegInterruptionsText.setText(str(self.eegData.interruptionsCheck))
-        events = convertEegEventsToList(self.eegData.events)
-        self.eegEventsCBox.addItems(events)
-        self.eegChannelsAvailableList.addItems(self.eegData.channelNames)
+
+    def updateAudioInformation(self):
+        setTextProperty(self.audioAudioSamplingFreqText, self.audioData.samplingFrequency)
+        setTextProperty(self.audioAudioDurationText, self.audioData.audioDuration)
+        setTextProperty(self.audioAudioStartTimeText, self.audioData.audioStartTime )
+        setTextProperty(self.audioAudioEndTimeText, self.audioData.audioEndTime)
+        setTextProperty(self.audioMarkersStartTimeText, self.audioData.markersStartTime)
+        #setTextProperty(self.audioMarkersEndTimeText, self.audioData.)
+        setTextProperty(self.audioNoMarkersText, self.audioData.nMarkers)
+        setTextProperty(self.audioMarkersDurationText, self.audioData.markersDuration)
+        self.audioAddDataToMarkersBundledTable()
+
+    def browseXDFFile(self):
+        fileDialog = QFileDialog()
+        filePath, _ = fileDialog.getOpenFileName(self, "Open XDF File", "", "XDF Files (*.xdf)")
+        if filePath:
+            self.xdfFilePath = filePath
+            self.xdfFileName = getFileNameFromPath(filePath)
+            self.audioFileNameTextbox.setText(self.xdfFileName)
+    
+    def loadXDFFile(self):
+        if self.xdfFilePath:
+            self.waitingMessageBox = self.showWaitingMessage("Loading XDF data. Please wait...")
+            self.loadThread = LoadAudioThread(self.xdfFilePath)
+            self.loadThread.finished.connect(self.onLoadFinishedAudio)
+            self.loadThread.error.connect(self.onLoadError)
+            self.loadThread.start()
+
+    def audioAddDataToMarkersBundledTable(self):
+        data = self.audioData.markersWordsTimestampsAudioStartIndex
+        nRows = len(data)
+        self.audioAndMarkersBundledTable.setRowCount(nRows)
+        for rowIndex in range(nRows):
+            print(data[rowIndex])
+            for colIndex in range(4):
+                self.audioAndMarkersBundledTable.setItem(rowIndex, colIndex, QTableWidgetItem(str(data[rowIndex][colIndex])))
+        self.audioAndMarkersBundledTable.verticalHeader().setSectionResizeMode(self.audioAndMarkersBundledTable.verticalHeader().ResizeToContents)
+
+
+    def loadMappingWindow(self):
+        self.eegAudioData = EegAudioData(self.eegData, self.audioData)
+        self.hide()
+        self.mappingPageViewer = MappingWindow(self.eegAudioData)
+        self.mappingPageViewer.aboutToClose.connect(self.showMainWindow)
+        self.mappingPageViewer.show()
+
+
+    ################################################################################
+    ################################ Common Functions ###############################
+    ################################################################################
+
+    def setupHeaderLayout(self, title):
+        rowLayout = QVBoxLayout()
+        rowLayoutWidget = wrapLayoutInWidget(rowLayout)
+
+        styleTitle = f'<center><b><font color="#000080" size="8">{title} </font></b></center>'
+        headerWidget = QLabel(styleTitle)
+        #headerWidget.setStyleSheet(layoutHeader)
+        rowLayout.addWidget(headerWidget)
+        return rowLayoutWidget
+
+    def showMainWindow(self):
+        self.show()
+    
+    def onLoadError(self, error_message):
+        self.waitingMessageBox.accept()
+        QMessageBox.critical(self, "Error", f"Failed to load EEG data: {error_message}")
 
     def showWaitingMessage(self, message):
         waitingMsgBox = QMessageBox()
@@ -480,35 +539,10 @@ class MainWindow(QMainWindow):
         QApplication.processEvents()
         return waitingMsgBox
 
-    def onLoadError(self, error_message):
-        self.waitingMessageBox.accept()
-        QMessageBox.critical(self, "Error", f"Failed to load EEG data: {error_message}")
-
-    def addAllItemsToChannelSelected(self):
-        while self.eegChannelsAvailableList.count() > 0:
-            item = self.eegChannelsAvailableList.takeItem(0)
-            self.eegChannelsSelectedList.addItem(item.text())
-
-    def removeAllItemsFromChannelSelected(self):
-        while self.eegChannelsSelectedList.count() > 0:
-            item = self.eegChannelsSelectedList.takeItem(0)
-            self.eegChannelsAvailableList.addItem(item.text())
-
-    def addItemToChannelSelectedList(self):
-        selectedItems = self.eegChannelsAvailableList.selectedItems()
-        for item in selectedItems:
-            self.eegChannelsSelectedList.addItem(item.text())
-            self.eegChannelsAvailableList.takeItem(self.eegChannelsAvailableList.row(item))
+    
+   
         
-    def removeItemFromChannelSelected(self):
-        selectedItems = self.eegChannelsSelectedList.selectedItems()
-        for item in selectedItems:
-            self.eegChannelsAvailableList.addItem(item.text())
-            self.eegChannelsSelectedList.takeItem(self.eegChannelsSelectedList.row(item))
-
-    def visualizeEegChannels(self):
-        selectedChannels = [self.eegChannelsSelectedList.item(i).text() for i in range(self.eegChannelsSelectedList.count())]
-        plotData = self.eegData.rawData.copy()
-        eegDataSelectedChannels = plotData.pick(selectedChannels)
-        eegDataSelectedChannels.plot(duration=60, show_options=True)
-
+        
+    
+    
+    

@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QApplication
 #from src.gui.main_display1 import MainWindow
-from gui.test import MainWindow
+from gui.main_display import MainWindow
 from classes.eeg import EegData
 import pdb
 import sys

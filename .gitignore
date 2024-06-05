@@ -162,3 +162,5 @@ cython_debug/
 Data/
 F10/
 Extracted/
+BIDS/
+AudioFilesForPlaying/

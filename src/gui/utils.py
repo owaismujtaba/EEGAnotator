@@ -62,6 +62,29 @@ layoutStyleItems = """
         border-radius: 1px;
         background-color: #E0FFFF;
     """
+
+def extractRowDataFromTable(table, rowIndex):
+    rowData  = []
+    for colIndex in range(table.columnCount()):
+        item = table.item(rowIndex, colIndex)
+        if item is not None:
+            rowData.append(item.text())
+
+    return rowData
+
+
+def getRowBackgroundColorFromTable(tableWidget, row):
+    if row < 0 or row >= tableWidget.rowCount():
+        return None
+    item = tableWidget.item(row, 0) 
+    if item is not None:
+        backgroundColor = item.background().color()
+        rgb = backgroundColor.getRgb()
+        backgroundColorHex = "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
+        return backgroundColorHex
+    else:
+        return None
+
 def jsonSideCar(metadata):
     pass
 
