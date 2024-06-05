@@ -1,9 +1,7 @@
-name: eeg_audio_anotator
+name: eegAudioAnotator
 channels:
   - defaults
-  - conda-forge
 dependencies:
-  - python=3.10.14
   - astroid=3.2.2
   - certifi=2024.2.2
   - cffi=1.16.0
@@ -26,15 +24,21 @@ dependencies:
   - pandas=2.2.2
   - pillow=10.3.0
   - pooch=1.8.1
+  - pyaudio=0.2.14
   - pycparser=2.22
   - pylint=3.2.2
   - pyparsing=3.1.2
-  - pyqt=5.15.9
+  - pyqt5=5.15.9
+  - pyqt5-plugins=5.15.9.2.3
+  - pyqt5-qt5=5.15.2
+  - pyqt5-sip=12.13.0
+  - pyqt5-tools=5.15.9.3.3
   - pyqtgraph=0.13.7
   - python-dotenv=1.0.1
   - pytz=2024.1
   - pyxdf=1.16.6
-  - qt=5.15.2
+  - qt5-applications=5.15.2.2.3
+  - qt5-tools=5.15.2.1.3
   - requests=2.32.2
   - scipy=1.13.1
   - soundfile=0.12.1
@@ -43,12 +47,3 @@ dependencies:
   - tqdm=4.66.4
   - tzdata=2024.1
   - urllib3=2.2.1
-  - pip
-  - pip:
-    - PyAudio==0.2.14
-    - pyqt5-plugins==5.15.9.2.3
-    - pyqt5-sip==12.13.0
-    - pyqt5-tools==5.15.9.3.3
-    - qt5-applications==5.15.2.2.3
-    - qt5-tools==5.15.2.1.3
-    - -e .  
