@@ -5,3 +5,12 @@
 2. variable name : myVariableName
 3. class name : MyClassName
 4.function name : myFunctionName
+
+*** Install ****
+
+download the repository
+make a virtual environment with python 3.10.14
+
+activate the virtual environment
+
+run on terminal.*** pip install ***.
