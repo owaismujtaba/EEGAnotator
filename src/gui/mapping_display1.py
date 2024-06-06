@@ -66,7 +66,9 @@ class SaveWorker(QThread):
         jsonMetaData['BlockName'] = self.app.currentTask
         jsonMetaData['TaskName'] = self.app.currentBlock
         jsonMetaData['PatientID'] = self.app.subjectID.text()
+        jsonMetaData['SessionID'] = self.app.sessionID.text()
         jsonMetaData['Marker'] = self.app.marker
+        jsonMetaData['Word'] = self.app.currentWord
         jsonMetaData['EEEGSamplingFrequency'] = self.app.eegSamplingRate
         jsonMetaData['AudioSamplingFrequency'] = self.app.audioSamplingRate
         jsonMetaData['EEGStartTime'] = self.app.eegStartTime
@@ -108,7 +110,6 @@ class MappingWindow(QMainWindow):
         self.setGeometry(500, 300, 1300, 300)
         self.setWindowIcon(QIcon(config.windowIconPath)) 
         self.setStyleSheet("background-color: #f0f0f0;")
-        
         centralWidget = QWidget()
         self.setCentralWidget(centralWidget)
         self.mainLayout = QHBoxLayout()
@@ -416,13 +417,13 @@ class MappingWindow(QMainWindow):
         self.audioStartIndex = int(rowData[6])
         self.marker = rowData[0]
         self.word = rowData[1]
-        self.eegStartTime = rowData[2]
-        self.eegEndTime = rowData[3]
+        self.eegStartTime = float(rowData[2])
+        self.eegEndTime = float(rowData[3])
         self.eegStartIndex = int(rowData[4])
         self.eegEndIndex = int(rowData[5])
         self.audioStartIndex = int(rowData[6])
         self.eegDuration = int(rowData[7])
-        self.audioStartTime = rowData[8]
+        self.audioStartTime = float(rowData[8])
         
     def extractAudioForPlay(self):
         self.initialiseMappingInfo()
@@ -511,6 +512,7 @@ class MappingWindow(QMainWindow):
         if self.checkDirectorySetup:
             rowData = extractRowDataFromTable(self.mappingTableWidget, self.currentMappingRow)
             word = rowData[1]
+            self.currentWord = word
             backgroundColor = getRowBackgroundColorFromTable(self.mappingTableWidget, self.currentMappingRow)
             if backgroundColor == self.backgroundColorSayingBlock:
                 self.currentBlock = 'Saying'
