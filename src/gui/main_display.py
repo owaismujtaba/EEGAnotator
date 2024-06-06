@@ -11,7 +11,7 @@ from gui.utils import createQLineEdit,layoutStyle
 from classes.eeg import EegData
 from classes.audio import AudioData
 from classes.eeg_audio import EegAudioData
-from gui.mapping_display import MappingWindow
+from gui.mapping_display1 import MappingWindow
 
 class LoadEegThread(QThread):
     finished = pyqtSignal(object)
@@ -518,7 +518,6 @@ class MainWindow(QMainWindow):
 
         styleTitle = f'<center><b><font color="#000080" size="8">{title} </font></b></center>'
         headerWidget = QLabel(styleTitle)
-        #headerWidget.setStyleSheet(layoutHeader)
         rowLayout.addWidget(headerWidget)
         return rowLayoutWidget
 

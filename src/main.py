@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QApplication
-from src.gui.main_display import MainWindow
+from gui.main_display import MainWindow
 import sys
 
 def main():

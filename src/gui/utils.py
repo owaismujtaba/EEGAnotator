@@ -85,9 +85,6 @@ def getRowBackgroundColorFromTable(tableWidget, row):
     else:
         return None
 
-def jsonSideCar(metadata):
-    pass
-
 def setTextProperty(item, value):
     item.setText(str(value))
 
