@@ -6,7 +6,7 @@
 3. class name : MyClassName
 4. function name : myFunctionName
 
-# EEG and Audio Data Processing
+# EEG and Audio Data Annotator
 
 This project provides a set of Python scripts and utility functions for processing EEG (Electroencephalogram) and audio data. The softawre maps the events of the eeg and the audio based on the time and the markers in audio and the triggers in the eeg. The scripts are designed to load, preprocess, and analyze EEG and audio recordings, facilitating research and experiments in neuroscience, cognitive science, and related fields.
 
