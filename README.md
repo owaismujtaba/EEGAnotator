@@ -8,13 +8,11 @@
 
 # EEG and Audio Data Processing
 
-This project provides a set of Python scripts and utility functions for processing EEG (Electroencephalogram) and audio data. The scripts are designed to load, preprocess, and analyze EEG and audio recordings, facilitating research and experiments in neuroscience, cognitive science, and related fields.
+This project provides a set of Python scripts and utility functions for processing EEG (Electroencephalogram) and audio data. The softawre maps the events of the eeg and the audio based on the time and the markers in audio and the triggers in the eeg. The scripts are designed to load, preprocess, and analyze EEG and audio recordings, facilitating research and experiments in neuroscience, cognitive science, and related fields.
 
 ## Features
-
 - **EEG Data Processing**:
   - Load data from EDF files.
-  - Preprocess EEG data, including event detection, trigger normalization, and correction.
   - Identify significant time gaps in EEG recordings.
   - Map EEG triggers to corresponding events.
   
@@ -26,6 +24,8 @@ This project provides a set of Python scripts and utility functions for processi
 - **Integration of EEG and Audio Data**:
   - Align EEG and audio events based on timestamps.
   - Map EEG actions to corresponding audio markers.
+  - Map EEG events to audio events based on both timestamps and triggers.
+
   
 ## Prerequisites
 
