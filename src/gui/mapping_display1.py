@@ -30,7 +30,7 @@ class SaveWorker(QThread):
         try:
             saveDir = self.app.subjectAndSessionDir
             self.eegFileNameWithPath = Path(saveDir, f'{self.app.fullFilePathBidsFormat}.fif')
-            self.sideCarJsonFileNameWithPath = Path(saveDir, f'{self.app.fullFilePathBidsFormat}json')
+            self.sideCarJsonFileNameWithPath = Path(saveDir, f'{self.app.fullFilePathBidsFormat}.json')
             self.audioFileNameWithPath = Path(saveDir, f'{self.app.fullFilePathBidsFormat}.wav')
             self.eventsFileNameWithPath = Path(saveDir, f'{self.app.fullFilePathBidsFormat}.tsv')
             self.saveFiles()
@@ -63,11 +63,11 @@ class SaveWorker(QThread):
         jsonMetaData = {}
         filepath = self.sideCarJsonFileNameWithPath
 
-        jsonMetaData['BlockName'] = self.app.currentTask
-        jsonMetaData['TaskName'] = self.app.currentBlock
+        jsonMetaData['ActivityName'] = self.app.currentActivity
+        jsonMetaData['BlockName'] = self.app.currentBlock
+        jsonMetaData['TaskName'] = self.app.currentTask
         jsonMetaData['PatientID'] = self.app.subjectID.text()
         jsonMetaData['SessionID'] = self.app.sessionID.text()
-        jsonMetaData['Marker'] = self.app.marker
         jsonMetaData['Word'] = self.app.currentWord
         jsonMetaData['EEEGSamplingFrequency'] = self.app.eegSamplingRate
         jsonMetaData['AudioSamplingFrequency'] = self.app.audioSamplingRate
@@ -79,7 +79,7 @@ class SaveWorker(QThread):
         jsonMetaData['AudioStartIndex'] = self.app.audioStartIndex
         jsonMetaData['AudioEndIndex'] = self.app.audioEndIndex
         jsonMetaData['EEGDuration'] = self.app.eegDuration
-        jsonMetaData['EEGReference'] = 'Cz'
+        jsonMetaData['EEGReference'] = 'n/a'
         jsonMetaData['EEGChannelCount'] = self.app.eegAudioData.eegData.nChannels
         jsonMetaData['GoodChannels'] = self.app.eegAudioData.eegData.goodChannels
         jsonMetaData['BadChannels'] = self.app.eegAudioData.eegData.badChannels
@@ -105,6 +105,7 @@ class MappingWindow(QMainWindow):
         self.currentMappingRow = 0
         self.audioSampleData = None
         self.eegSampleData = None
+        self.runCount = 1
 
         self.setWindowTitle('Mapping EEG and AUDIO Data')
         self.setGeometry(500, 300, 1300, 300)
@@ -354,8 +355,6 @@ class MappingWindow(QMainWindow):
         rowLayout.addWidget(self.stopAudioButton)
 
         return rowLayoutWidget
-    
-    
 
     def setMappingTableData(self):
         data = self.eegAudioData.mappingEegEventsWithMarkers
@@ -363,8 +362,19 @@ class MappingWindow(QMainWindow):
         self.mappingTableWidget.setRowCount(nRows)
 
         for rowIndex in range(nRows):
+            print(data[rowIndex])
             for colIndex in range(9):
-                self.mappingTableWidget.setItem(rowIndex, colIndex, QTableWidgetItem(str(data[rowIndex][colIndex])))
+                if colIndex == 0:
+                    value = str(data[rowIndex][colIndex])
+                    if 'EndReading' in value:
+                        value = 'ITI'
+                    elif 'EndSaying' in value:
+                        value = 'Fixation'
+                    else:
+                        value = str(data[rowIndex][colIndex])
+                else:
+                    value = str(data[rowIndex][colIndex])
+                self.mappingTableWidget.setItem(rowIndex, colIndex, QTableWidgetItem(value))
 
         
         self.changeRowColors()
@@ -476,6 +486,7 @@ class MappingWindow(QMainWindow):
             self.saveWorker = SaveWorker(self)
             self.saveWorker.finished.connect(self.onSaveFinished)
             self.saveWorker.error.connect(self.onSaveError)
+            self.runCount += 1
             self.saveWorker.start()
         else:
             QMessageBox.critical(self, "Error", f"Enter Subject ID and Session ID")
@@ -492,6 +503,7 @@ class MappingWindow(QMainWindow):
                 self.currentMappingRow += 1
                 self.saveWorker.finished.connect(self.onSaveFinished)
                 self.saveWorker.error.connect(self.onSaveError)
+                self.runCount += 1
                 self.saveWorker.start()
         else:
             QMessageBox.critical(self, "Error", f"Enter Subject ID and Session ID")
@@ -508,6 +520,7 @@ class MappingWindow(QMainWindow):
             else:
                 QMessageBox.critical(self, "Error", f"Enter Subject ID and Session ID")
 
+    
     def setupFilePathsForSavingFilesBIDSFormat(self):
         if self.checkDirectorySetup:
             rowData = extractRowDataFromTable(self.mappingTableWidget, self.currentMappingRow)
@@ -518,25 +531,19 @@ class MappingWindow(QMainWindow):
                 self.currentBlock = 'Saying'
             if backgroundColor == self.backgroundColorImaginingBlock:
                 self.currentBlock = 'Thinking'
-
-            self.filePathsUntillBlock = f'{self.subjectAndSessionDirName}_task-{self.taskType.currentText()}_block-{self.currentBlock}'
-            self.currentTask = self.taskType.currentText()
-            print(self.currentTask)
+            
+            self.currentTask = rowData[0]
+            self.filePathsUntillBlock = f'{self.subjectAndSessionDirName}_activity-{self.taskType.currentText()}_block-{self.currentBlock}_task-{self.currentTask}'
+            self.currentActivity = self.taskType.currentText()
+            
             if self.currentBlock == 'Saying':
-                if word not in self.runCountSaying:
-                    self.runCountSaying[word] = 1
-                else:
-                    self.runCountSaying[word] += 1
-                self.fullFilePathBidsFormat = f'{self.filePathsUntillBlock}_word-{word}_run-{self.runCountSaying[word]}'
+                self.fullFilePathBidsFormat = f'{self.filePathsUntillBlock}_word-{word}_run-{self.runCount}'
 
             if self.currentBlock == 'Thinking':
-                if word not in self.runCountImagning:
-                    self.runCountImagning[word] = 1
-                else:
-                    self.runCountImagning[word] += 1
-                self.fullFilePathBidsFormat = f'{self.filePathsUntillBlock}_word-{word}_run-{self.runCountImagning[word]}'
+                self.fullFilePathBidsFormat = f'{self.filePathsUntillBlock}_word-{word}_run-{self.runCount}'
             print(self.fullFilePathBidsFormat)
-    
+
+
     def changeRowColors(self):
         color = "#ffff00"
         for row in range(self.mappingTableWidget.rowCount()):
