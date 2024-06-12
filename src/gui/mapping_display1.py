@@ -63,13 +63,13 @@ class SaveWorker(QThread):
         jsonMetaData = {}
         filepath = self.sideCarJsonFileNameWithPath
 
-        jsonMetaData['ActivityName'] = self.app.currentActivity
-        jsonMetaData['BlockName'] = self.app.currentBlock
-        jsonMetaData['TaskName'] = self.app.currentTask
+        jsonMetaData['TaskName'] = self.app.currentActivity
+        jsonMetaData['Modality'] = self.app.currentBlock
+        jsonMetaData['BlackName'] = self.app.currentTask
         jsonMetaData['PatientID'] = self.app.subjectID.text()
         jsonMetaData['SessionID'] = self.app.sessionID.text()
         jsonMetaData['Word'] = self.app.currentWord
-        jsonMetaData['EEEGSamplingFrequency'] = self.app.eegSamplingRate
+        jsonMetaData['EEGSamplingFrequency'] = self.app.eegSamplingRate
         jsonMetaData['AudioSamplingFrequency'] = self.app.audioSamplingRate
         jsonMetaData['EEGStartTime'] = self.app.eegStartTime
         jsonMetaData['EEGEndTime'] = self.app.eegEndTime
@@ -360,9 +360,9 @@ class MappingWindow(QMainWindow):
         data = self.eegAudioData.mappingEegEventsWithMarkers
         nRows = len(data)
         self.mappingTableWidget.setRowCount(nRows)
-
+        insertRowCount = 0
         for rowIndex in range(nRows):
-            print(data[rowIndex])
+            blockName = data[rowIndex][0]
             for colIndex in range(9):
                 if colIndex == 0:
                     value = str(data[rowIndex][colIndex])
@@ -374,9 +374,20 @@ class MappingWindow(QMainWindow):
                         value = str(data[rowIndex][colIndex])
                 else:
                     value = str(data[rowIndex][colIndex])
-                self.mappingTableWidget.setItem(rowIndex, colIndex, QTableWidgetItem(value))
-
-        
+            
+                self.mappingTableWidget.setItem(insertRowCount, colIndex, QTableWidgetItem(value))
+            insertRowCount += 1
+            if 'Block' in blockName:
+                marker, word = 'Fixation', '.'
+                eegStartTime, eegEndTime = data[rowIndex+1][2]-2, data[rowIndex+1][2]
+                eegStartIndex, eegEndIndex =  data[rowIndex+1][4]-1024,  data[rowIndex+1][4]
+                audioStartIndex, duration =  data[rowIndex+1][6]-44100*2, 1024
+                audioStartTime = data[rowIndex+1][8]-2
+                newRow = [marker, word, eegStartTime, eegEndTime, eegStartIndex, eegEndIndex, audioStartIndex, duration, audioStartTime ]
+                for index in range(9):
+                    self.mappingTableWidget.setItem(insertRowCount, index, QTableWidgetItem(str(newRow[index])))
+                print(newRow)
+                insertRowCount += 1
         self.changeRowColors()
     
     def mappingDataCellClicked(self, row):
@@ -548,7 +559,8 @@ class MappingWindow(QMainWindow):
         color = "#ffff00"
         for row in range(self.mappingTableWidget.rowCount()):
             item = self.mappingTableWidget.item(row, 0) 
-            value = item.text()  
+            value = item.text()
+            print(value)
             if value == 'StartBlockThinking':
                 color = self.backgroundColorImaginingBlock
             if value == 'StartBlockSaying':

@@ -386,7 +386,7 @@ class MainWindow(QMainWindow):
             self.edfFilePath = filePath
             self.edfFileName = getFileNameFromPath(filePath)
             self.eegFileNameTextbox.setText(self.edfFileName)
-            print(filePath)
+            
 
     def loadEdfFile(self):
         if self.edfFilePath:
@@ -482,6 +482,7 @@ class MainWindow(QMainWindow):
             self.audioFileNameTextbox.setText(self.xdfFileName)
     
     def loadXDFFile(self):
+        self.audioData = None
         if self.xdfFilePath:
             self.waitingMessageBox = self.showWaitingMessage("Loading XDF data. Please wait...")
             self.loadThread = LoadAudioThread(self.xdfFilePath)
@@ -494,7 +495,6 @@ class MainWindow(QMainWindow):
         nRows = len(data)
         self.audioAndMarkersBundledTable.setRowCount(nRows)
         for rowIndex in range(nRows):
-            print(data[rowIndex])
             for colIndex in range(4):
                 self.audioAndMarkersBundledTable.setItem(rowIndex, colIndex, QTableWidgetItem(str(data[rowIndex][colIndex])))
         self.audioAndMarkersBundledTable.verticalHeader().setSectionResizeMode(self.audioAndMarkersBundledTable.verticalHeader().ResizeToContents)
