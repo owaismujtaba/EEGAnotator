@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QHeaderView
-from PyQt5.QtWidgets import QVBoxLayout, QLabel,QLineEdit ,QTableWidget,QTableWidgetItem,  QMessageBox
+from PyQt5.QtWidgets import QVBoxLayout, QLabel,QLineEdit ,QTableWidget,QTableWidgetItem, QFileDialog, QMessageBox
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QUrl
 from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
@@ -10,7 +10,7 @@ import soundfile as sf
 import json
 import pandas as pd
 import config
-from gui.utils import getRowBackgroundColorFromTable, layoutStyleItems
+from gui.utils import getRowBackgroundColorFromTable, layoutStyleItems, getFileNameFromPath
 from gui.utils import  wrapLayoutInWidget, createQLabel, createQPushButton, createQComboBox
 from gui.utils import createQLineEdit,layoutStyle, extractWidgets, extractRowDataFromTable
 from classes.eeg import EegData
@@ -18,7 +18,7 @@ from classes.audio import AudioData
 import config
 import os
 from pathlib import Path
-
+import pyxdf
 class SaveWorker(QThread):
     finished = pyqtSignal()
     error = pyqtSignal(str)
@@ -88,26 +88,29 @@ class SaveWorker(QThread):
         with open(filepath, 'w') as jsonFile:
             json.dump(jsonMetaData, jsonFile, indent=4)
 
-class MappingWindow(QMainWindow):
-    aboutToClose = pyqtSignal()
-    def __init__(self, eegAudioData):
-        super().__init__()
-        
-        self.eegAudioData = eegAudioData
-        self.audioSamplingRate = self.eegAudioData.audioData.samplingFrequency
-        self.eegSamplingRate = self.eegAudioData.eegData.samplingFrequency
-        self.backgroundColorSayingBlock = '#ffff00'
-        self.backgroundColorImaginingBlock = '#ffc0cb'
-        self.checkDirectorySetup = False
-        self.currentBlock = None
-        self.runCountSaying = {}
-        self.runCountImagning = {}
-        self.currentMappingRow = 0
-        self.audioSampleData = None
-        self.eegSampleData = None
-        self.runCount = 1
 
-        self.setWindowTitle('Mapping EEG and AUDIO Data')
+class LoadXDFThread(QThread):
+    finished = pyqtSignal(object)
+    error = pyqtSignal(str)
+
+    def __init__(self, filePath):
+        super().__init__()
+        self.filePath = filePath
+
+    def run(self):
+        try:
+            xdf = pyxdf.load_xdf(self.filePath)
+            self.finished.emit(xdf)
+        except Exception as e:
+            self.error.emit(str(e))
+
+
+class PilotDataWindow(QMainWindow):
+    aboutToClose = pyqtSignal()
+    def __init__(self):
+        super().__init__()
+        self.xdfFilePath = None
+        self.setWindowTitle('Pilot Experiment')
         self.setGeometry(500, 300, 1300, 300)
         self.setWindowIcon(QIcon(config.windowIconPath)) 
         self.setStyleSheet("background-color: #f0f0f0;")
@@ -117,16 +120,16 @@ class MappingWindow(QMainWindow):
         centralWidget.setLayout(self.mainLayout)
 
         mappingsLayout, plotsAndOther = self.setupLayouts()
-
+        
         self.mainLayout.addLayout(mappingsLayout, 20)  
         self.mainLayout.addLayout(plotsAndOther, 19)
-        self.setMappingTableData()
+        #self.setMappingTableData()
 
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.updateAudioPlot)
-        self.audioIndex = 0
+        #self.timer = QTimer()
+        #self.timer.timeout.connect(self.updateAudioPlot)
+        #self.audioIndex = 0
 
-        self.mediaPlayer = QMediaPlayer()
+        #self.mediaPlayer = QMediaPlayer()
     
     def setupLayouts(self):
         mappingsLayout = self.setupMappingsLayout()
@@ -143,7 +146,9 @@ class MappingWindow(QMainWindow):
 
     def connectMappingsSignals(self):
         self.mappingTableWidget.cellClicked.connect(self.mappingDataCellClicked)
-
+        self.xdfSelectFileButton.clicked.connect(self.browseXDFFile)
+        self.xdfLoadFileButton.clicked.connect(self.loadXDFFile)
+    
     def connectAudioSignals(self):
         self.playAudioButton.clicked.connect(self.playAudioFile)
         self.stopAudioButton.clicked.connect(self.stopAudioButtonFunction)
@@ -163,27 +168,70 @@ class MappingWindow(QMainWindow):
     ################################################################################
 
     def setupMappingsLayout(self):
-        mainLayout = QHBoxLayout()
-        
+        mainLayout = QVBoxLayout()
+        fileUplodalayoutWidget = self.setupXdfFileLoadingLayout()
         self.mappingTableWidget = QTableWidget()
         self.mappingTableWidget.setStyleSheet(layoutStyle)
         self.mappingTableWidget.setRowCount(0)
         self.mappingTableWidget.setColumnCount(9)
-        headers = ["Marker", "Word", "EEG Start Time", "EEG End Time", "EEG Start Index", "EEG End Index", "Audio Start Index", "Duration", 'Audio Start Time']
+        headers = ["activity", "task", "word",  "eegStartIndex", "eegEndIndex","eegDuration", "audioStartIndex", "audioStartIndex","audioDuration"]
         self.mappingTableWidget.setHorizontalHeaderLabels(headers)
         header = self.mappingTableWidget.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
         self.mappingTableWidget.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        
+        mainLayout.addWidget(fileUplodalayoutWidget)
         mainLayout.addWidget(self.mappingTableWidget)
         
         return mainLayout
-    
+        
+    def setupXdfFileLoadingLayout(self):
+        rowLayout = QHBoxLayout()
+        rowLayoutWidget = wrapLayoutInWidget(rowLayout)
 
+        audioFileNameLabel = createQLabel('XDF (.xdf) File')
+        self.xdfFilenameTextBox = createQLineEdit('Filename will appear here!!!')
+        self.xdfSelectFileButton = createQPushButton('Select File')
+        self.xdfLoadFileButton = createQPushButton('Load File')
+
+        rowLayout.addWidget(audioFileNameLabel)
+        rowLayout.addWidget(self.xdfFilenameTextBox)
+        rowLayout.addWidget(self.xdfSelectFileButton)
+        rowLayout.addWidget(self.xdfLoadFileButton)
+
+        return rowLayoutWidget
+        
+    def browseXDFFile(self):
+        fileDialog = QFileDialog()
+        filePath, _ = fileDialog.getOpenFileName(self, "Open XDF File", "", "XDF Files (*.xdf)")
+        if filePath:
+            self.xdfFilePath = filePath
+            self.xdfFileName = getFileNameFromPath(filePath)
+            self.xdfFilenameTextBox.setText(self.xdfFileName)
+    
+    def loadXDFFile(self):
+        self.xdfData = None
+        if self.xdfFilePath:
+            self.waitingMessageBox = self.showWaitingMessage("Loading XDF data. Please wait...")
+            self.loadThread = LoadXDFThread(self.xdfFilePath)
+            self.loadThread.finished.connect(self.onLoadFinishedXDF)
+            self.loadThread.error.connect(self.onLoadError)
+            self.loadThread.start()
     ################################################################################
     #############################  Plots and Other Layout ##########################
     ################################################################################
+    def onLoadFinishedXDF(self, xdfData):
+        self.xdfData = xdfData
+        self.updateMappingInformation()
+        #self.waitingMessageBox.accept()
 
+    def updateMappingInformation():
+        self.triggersTimestamps = self.xdfData[0][1]['time_stamps']
+        self.triggers = self.xdfData[0][1]['time_series']
+        self.audio = self.xdfData[0][3]['time_series']
+        self.audioTimestamps = self.xdfData[0][3]['time_stamps']
+        self.eegData = self.xdfData[0][2]['time_series']
+        self.eegTimestamps = self.xdfData[0][2]['time_stamps']
+        
     def setupPlotsAndOtherLayout(self):
         mainlayout = QVBoxLayout()
         
@@ -531,7 +579,6 @@ class MappingWindow(QMainWindow):
             else:
                 QMessageBox.critical(self, "Error", f"Enter Subject ID and Session ID")
 
-    
     def setupFilePathsForSavingFilesBIDSFormat(self):
         if self.checkDirectorySetup:
             rowData = extractRowDataFromTable(self.mappingTableWidget, self.currentMappingRow)
@@ -554,7 +601,6 @@ class MappingWindow(QMainWindow):
                 self.fullFilePathBidsFormat = f'{self.filePathsUntillBlock}_word-{word}_run-{self.runCount}'
             print(self.fullFilePathBidsFormat)
 
-
     def changeRowColors(self):
         color = "#ffff00"
         for row in range(self.mappingTableWidget.rowCount()):
@@ -570,7 +616,6 @@ class MappingWindow(QMainWindow):
                 item = self.mappingTableWidget.item(row, col)
                 if item is not None:
                     item.setBackground(QColor(color))
-
 
     
     def updateEegPlot(self):
@@ -600,3 +645,56 @@ class MappingWindow(QMainWindow):
         self.mappingTableWidget.removeRow(self.currentMappingRow)
         self.currentMappingRow = 0
         self.saveMessageBox.accept()
+        
+    def onLoadError(self, error_message):
+        self.waitingMessageBox.accept()
+        QMessageBox.critical(self, "Error", f"Failed to load EEG data: {error_message}")
+    
+    def calaculateMappings(self):
+        activity = None
+        task = None
+        word = None
+        mappings = []
+        for index in range(0, self.triggers.shape[0], 2):
+            activity, action = self.triggers[index].split(':')
+            task, word = action.split('_')
+            activity = self.getActivity(activity)
+            startTime = self.triggersTimestamps[index]
+            endTime = self.triggersTimestamps[index+1]
+            audioStartIndex = self.findClosestIndex(self.audioTimestamps, startTime)
+            audioEndIndex = self.findClosestIndex(self.audioTimestamps, endTime)
+            eegStartIndex = self.findClosestIndex(self.eegTimestamps, startTime)
+            eegEndIndex = self.findClosestIndex(self.eegTimestamps, endTime)
+            mappings.append([startTime, endTime, audioStartIndex, audioEndIndex, eegStartIndex, eegEndIndex])
+        
+        self.mappingsList = mappings
+        
+    
+    def findClosestIndex(self, timepoints, target):
+        timepoints = np.asarray(timepoints)  # Ensure the input is a NumPy array
+        idx = np.searchsorted(timepoints, target, side="left")
+        if idx == 0:
+            return 0
+        if idx == len(timepoints):
+            return len(timepoints) - 1
+        
+        before = idx - 1
+        after = idx
+        
+        if after < len(timepoints) and abs(timepoints[after] - target) < abs(timepoints[before] - target):
+            return after
+        else:
+            return before
+    def getActivity(self,activity):
+        if 'Fixation' in activity:
+            return 'Fixation'
+        elif 'ITI' in activity:
+            return 'ITI'
+        elif 'ISI' in activity:
+            return 'ISI'
+        elif 'Speech' in activity:
+            return 'Speech'
+        elif 'Stimulus' in activity:
+            return 'Stimulus'
+        else:
+            return 'None'

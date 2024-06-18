@@ -11,7 +11,7 @@ import json
 import pandas as pd
 import config
 from gui.utils import getRowBackgroundColorFromTable, layoutStyleItems
-from gui.utils import  wrapLayoutInWidget, createQLabel, createQPushButton
+from gui.utils import  wrapLayoutInWidget, createQLabel, createQPushButton, createQComboBox
 from gui.utils import createQLineEdit,layoutStyle, extractWidgets, extractRowDataFromTable
 from classes.eeg import EegData
 from classes.audio import AudioData
@@ -30,7 +30,7 @@ class SaveWorker(QThread):
         try:
             saveDir = self.app.subjectAndSessionDir
             self.eegFileNameWithPath = Path(saveDir, f'{self.app.fullFilePathBidsFormat}.fif')
-            self.sideCarJsonFileNameWithPath = Path(saveDir, f'{self.app.fullFilePathBidsFormat}json')
+            self.sideCarJsonFileNameWithPath = Path(saveDir, f'{self.app.fullFilePathBidsFormat}.json')
             self.audioFileNameWithPath = Path(saveDir, f'{self.app.fullFilePathBidsFormat}.wav')
             self.eventsFileNameWithPath = Path(saveDir, f'{self.app.fullFilePathBidsFormat}.tsv')
             self.saveFiles()
@@ -63,9 +63,13 @@ class SaveWorker(QThread):
         jsonMetaData = {}
         filepath = self.sideCarJsonFileNameWithPath
 
-        jsonMetaData['TaskName'] = self.app.currentBlock
-        jsonMetaData['Marker'] = self.app.marker
-        jsonMetaData['EEEGSamplingFrequency'] = self.app.eegSamplingRate
+        jsonMetaData['TaskName'] = self.app.currentActivity
+        jsonMetaData['Modality'] = self.app.currentBlock
+        jsonMetaData['BlackName'] = self.app.currentTask
+        jsonMetaData['PatientID'] = self.app.subjectID.text()
+        jsonMetaData['SessionID'] = self.app.sessionID.text()
+        jsonMetaData['Word'] = self.app.currentWord
+        jsonMetaData['EEGSamplingFrequency'] = self.app.eegSamplingRate
         jsonMetaData['AudioSamplingFrequency'] = self.app.audioSamplingRate
         jsonMetaData['EEGStartTime'] = self.app.eegStartTime
         jsonMetaData['EEGEndTime'] = self.app.eegEndTime
@@ -75,10 +79,11 @@ class SaveWorker(QThread):
         jsonMetaData['AudioStartIndex'] = self.app.audioStartIndex
         jsonMetaData['AudioEndIndex'] = self.app.audioEndIndex
         jsonMetaData['EEGDuration'] = self.app.eegDuration
-        jsonMetaData['EEGReference'] = 'Cz'
+        jsonMetaData['EEGReference'] = 'n/a'
         jsonMetaData['EEGChannelCount'] = self.app.eegAudioData.eegData.nChannels
         jsonMetaData['GoodChannels'] = self.app.eegAudioData.eegData.goodChannels
         jsonMetaData['BadChannels'] = self.app.eegAudioData.eegData.badChannels
+        
         
         with open(filepath, 'w') as jsonFile:
             json.dump(jsonMetaData, jsonFile, indent=4)
@@ -91,21 +96,21 @@ class MappingWindow(QMainWindow):
         self.eegAudioData = eegAudioData
         self.audioSamplingRate = self.eegAudioData.audioData.samplingFrequency
         self.eegSamplingRate = self.eegAudioData.eegData.samplingFrequency
-        self.backgroundColorPictureNamingSayingBlock = '#ffff00'
-        self.backgroundColorPictureNamingImaginingBlock = '#ffc0cb'
+        self.backgroundColorSayingBlock = '#ffff00'
+        self.backgroundColorImaginingBlock = '#ffc0cb'
         self.checkDirectorySetup = False
         self.currentBlock = None
-        self.runCountPictureNamingSaying = {}
-        self.runCountPictureNamingImagning = {}
+        self.runCountSaying = {}
+        self.runCountImagning = {}
         self.currentMappingRow = 0
         self.audioSampleData = None
         self.eegSampleData = None
+        self.runCount = 1
 
         self.setWindowTitle('Mapping EEG and AUDIO Data')
         self.setGeometry(500, 300, 1300, 300)
         self.setWindowIcon(QIcon(config.windowIconPath)) 
         self.setStyleSheet("background-color: #f0f0f0;")
-        
         centralWidget = QWidget()
         self.setCentralWidget(centralWidget)
         self.mainLayout = QHBoxLayout()
@@ -218,11 +223,17 @@ class MappingWindow(QMainWindow):
         self.subjectID = createQLineEdit('', enable=False)
         sessionID = createQLabel('Session No.')
         self.sessionID = createQLineEdit('', enable=False)
+        taskTypeLabel = createQLabel('Task Type')
+        self.taskType = createQComboBox('PictureNaming')
+        self.taskType.addItem('VCV')
+
 
         rowLayout.addWidget(subjectID)
         rowLayout.addWidget(self.subjectID)
         rowLayout.addWidget(sessionID)
         rowLayout.addWidget(self.sessionID)
+        rowLayout.addWidget(taskTypeLabel)
+        rowLayout.addWidget(self.taskType)
 
         return rowLayoWidget
 
@@ -344,19 +355,39 @@ class MappingWindow(QMainWindow):
         rowLayout.addWidget(self.stopAudioButton)
 
         return rowLayoutWidget
-    
-    
 
     def setMappingTableData(self):
         data = self.eegAudioData.mappingEegEventsWithMarkers
         nRows = len(data)
         self.mappingTableWidget.setRowCount(nRows)
-
+        insertRowCount = 0
         for rowIndex in range(nRows):
+            blockName = data[rowIndex][0]
             for colIndex in range(9):
-                self.mappingTableWidget.setItem(rowIndex, colIndex, QTableWidgetItem(str(data[rowIndex][colIndex])))
-
-        
+                if colIndex == 0:
+                    value = str(data[rowIndex][colIndex])
+                    if 'EndReading' in value:
+                        value = 'ITI'
+                    elif 'EndSaying' in value:
+                        value = 'Fixation'
+                    else:
+                        value = str(data[rowIndex][colIndex])
+                else:
+                    value = str(data[rowIndex][colIndex])
+            
+                self.mappingTableWidget.setItem(insertRowCount, colIndex, QTableWidgetItem(value))
+            insertRowCount += 1
+            if 'Block' in blockName:
+                marker, word = 'Fixation', '.'
+                eegStartTime, eegEndTime = data[rowIndex+1][2]-2, data[rowIndex+1][2]
+                eegStartIndex, eegEndIndex =  data[rowIndex+1][4]-1024,  data[rowIndex+1][4]
+                audioStartIndex, duration =  data[rowIndex+1][6]-44100*2, 1024
+                audioStartTime = data[rowIndex+1][8]-2
+                newRow = [marker, word, eegStartTime, eegEndTime, eegStartIndex, eegEndIndex, audioStartIndex, duration, audioStartTime ]
+                for index in range(9):
+                    self.mappingTableWidget.setItem(insertRowCount, index, QTableWidgetItem(str(newRow[index])))
+                print(newRow)
+                insertRowCount += 1
         self.changeRowColors()
     
     def mappingDataCellClicked(self, row):
@@ -407,13 +438,13 @@ class MappingWindow(QMainWindow):
         self.audioStartIndex = int(rowData[6])
         self.marker = rowData[0]
         self.word = rowData[1]
-        self.eegStartTime = rowData[2]
-        self.eegEndTime = rowData[3]
+        self.eegStartTime = float(rowData[2])
+        self.eegEndTime = float(rowData[3])
         self.eegStartIndex = int(rowData[4])
         self.eegEndIndex = int(rowData[5])
         self.audioStartIndex = int(rowData[6])
         self.eegDuration = int(rowData[7])
-        self.audioStartTime = rowData[8]
+        self.audioStartTime = float(rowData[8])
         
     def extractAudioForPlay(self):
         self.initialiseMappingInfo()
@@ -466,6 +497,7 @@ class MappingWindow(QMainWindow):
             self.saveWorker = SaveWorker(self)
             self.saveWorker.finished.connect(self.onSaveFinished)
             self.saveWorker.error.connect(self.onSaveError)
+            self.runCount += 1
             self.saveWorker.start()
         else:
             QMessageBox.critical(self, "Error", f"Enter Subject ID and Session ID")
@@ -482,6 +514,7 @@ class MappingWindow(QMainWindow):
                 self.currentMappingRow += 1
                 self.saveWorker.finished.connect(self.onSaveFinished)
                 self.saveWorker.error.connect(self.onSaveError)
+                self.runCount += 1
                 self.saveWorker.start()
         else:
             QMessageBox.critical(self, "Error", f"Enter Subject ID and Session ID")
@@ -498,42 +531,40 @@ class MappingWindow(QMainWindow):
             else:
                 QMessageBox.critical(self, "Error", f"Enter Subject ID and Session ID")
 
+    
     def setupFilePathsForSavingFilesBIDSFormat(self):
         if self.checkDirectorySetup:
             rowData = extractRowDataFromTable(self.mappingTableWidget, self.currentMappingRow)
             word = rowData[1]
+            self.currentWord = word
             backgroundColor = getRowBackgroundColorFromTable(self.mappingTableWidget, self.currentMappingRow)
-            if backgroundColor == self.backgroundColorPictureNamingSayingBlock:
-                self.currentBlock = 'PictureNaming-Saying'
-            if backgroundColor == self.backgroundColorPictureNamingImaginingBlock:
-                self.currentBlock = 'PictureNaming-Thinking'
+            if backgroundColor == self.backgroundColorSayingBlock:
+                self.currentBlock = 'Saying'
+            if backgroundColor == self.backgroundColorImaginingBlock:
+                self.currentBlock = 'Thinking'
+            
+            self.currentTask = rowData[0]
+            self.filePathsUntillBlock = f'{self.subjectAndSessionDirName}_activity-{self.taskType.currentText()}_block-{self.currentBlock}_task-{self.currentTask}'
+            self.currentActivity = self.taskType.currentText()
+            
+            if self.currentBlock == 'Saying':
+                self.fullFilePathBidsFormat = f'{self.filePathsUntillBlock}_word-{word}_run-{self.runCount}'
 
-            self.filePathsUntillBlock = f'{self.subjectAndSessionDirName}_task-{self.currentBlock}'
-
-            if self.currentBlock == 'PictureNaming-Saying':
-                if word not in self.runCountPictureNamingSaying:
-                    self.runCountPictureNamingSaying[word] = 1
-                else:
-                    self.runCountPictureNamingSaying[word] += 1
-                self.fullFilePathBidsFormat = f'{self.filePathsUntillBlock}_word-{word}_run-{self.runCountPictureNamingSaying[word]}'
-
-            if self.currentBlock == 'PictureNaming-Thinking':
-                if word not in self.runCountPictureNamingImagning:
-                    self.runCountPictureNamingImagning[word] = 1
-                else:
-                    self.runCountPictureNamingImagning[word] += 1
-                self.fullFilePathBidsFormat = f'{self.filePathsUntillBlock}_word-{word}_run-{self.runCountPictureNamingImagning[word]}'
+            if self.currentBlock == 'Thinking':
+                self.fullFilePathBidsFormat = f'{self.filePathsUntillBlock}_word-{word}_run-{self.runCount}'
             print(self.fullFilePathBidsFormat)
-    
+
+
     def changeRowColors(self):
         color = "#ffff00"
         for row in range(self.mappingTableWidget.rowCount()):
             item = self.mappingTableWidget.item(row, 0) 
-            value = item.text()  
+            value = item.text()
+            print(value)
             if value == 'StartBlockThinking':
-                color = self.backgroundColorPictureNamingImaginingBlock
+                color = self.backgroundColorImaginingBlock
             if value == 'StartBlockSaying':
-                color = self.backgroundColorPictureNamingSayingBlock
+                color = self.backgroundColorSayingBlock
           
             for col in range(self.mappingTableWidget.columnCount()):
                 item = self.mappingTableWidget.item(row, col)

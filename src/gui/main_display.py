@@ -11,7 +11,8 @@ from gui.utils import createQLineEdit,layoutStyle
 from classes.eeg import EegData
 from classes.audio import AudioData
 from classes.eeg_audio import EegAudioData
-from gui.mapping_display1 import MappingWindow
+from gui.mapping_display import MappingWindow
+from gui.mapping_display1 import PilotDataWindow
 
 class LoadEegThread(QThread):
     finished = pyqtSignal(object)
@@ -79,6 +80,7 @@ class MainWindow(QMainWindow):
     def connectSignals(self):
         self.connectEEGSignals()
         self.connectAudioSignals()
+        self.pilotDataButton.clicked.connect(self.startPilotDataPage)
 
     def connectEEGSignals(self):
         self.eegSelectFileButton.clicked.connect(self.browseEEGFile)
@@ -95,7 +97,11 @@ class MainWindow(QMainWindow):
         self.eegAndAudioMappingButton.clicked.connect(self.loadMappingWindow)
 
     
-
+    def startPilotDataPage(self,):
+        self.hide()
+        self.mappingPageViewer = PilotDataWindow()
+        self.mappingPageViewer.aboutToClose.connect(self.showMainWindow)
+        self.mappingPageViewer.show()
 
     ################################################################################
     ############################## EEG Layout Functions ############################
@@ -114,6 +120,7 @@ class MainWindow(QMainWindow):
         self.eegEventsTable = self.setupEEGEventsLayout()
         visualizeEEG = self.visualiseEEGLayout()
         self.eegVisualizeSelectedChannelsButton = createQPushButton('Visualize Selected Channels')
+        self.pilotDataButton = createQPushButton('Click if Pilot Experiment')
 
 
         mainLayout.addWidget(headerWidget)
@@ -125,6 +132,7 @@ class MainWindow(QMainWindow):
         mainLayout.addWidget(self.eegEventsTable)
         mainLayout.addWidget(visualizeEEG)
         mainLayout.addWidget(self.eegVisualizeSelectedChannelsButton)
+        mainLayout.addWidget(self.pilotDataButton)
 
         return mainLayout
     
